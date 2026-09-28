@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.oftapp.ui.navigation.OftAppNavigation
 import com.example.oftapp.ui.theme.OFTAPPTheme
 
 
@@ -18,7 +19,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            OftAppTheme {
+            OFTAPPTheme {
                 OftAppNavigation()
             }
         }
