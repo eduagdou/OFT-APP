@@ -9,15 +9,20 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,6 +35,9 @@ import com.example.oftapp.ui.screens.ExamenesScreen
 import com.example.oftapp.ui.screens.HomeScreen
 import com.example.oftapp.ui.screens.LoginScreen
 import com.example.oftapp.ui.screens.PerfilScreen
+import com.example.oftapp.ui.theme.AzulContenedor
+import com.example.oftapp.ui.theme.AzulPrincipal
+import com.example.oftapp.ui.theme.TextoSecundario
 import com.example.oftapp.viewmodel.ExamenesViewModel
 import com.example.oftapp.viewmodel.LoginViewModel
 
@@ -52,35 +60,52 @@ fun OftAppNavigation() {
     val rutaActual = backStack?.destination?.route
     val mostrarBarras = rutaActual != null && rutaActual != Routes.LOGIN
 
-    val titulo = when (rutaActual) {
-        Routes.INICIO -> "OftApp"
-        Routes.EXAMENES -> "Mis exámenes"
-        Routes.DETALLE -> "Detalle del examen"
-        Routes.PERFIL -> "Mi perfil"
+    val titulo = when {
+        rutaActual == Routes.INICIO -> "OftApp"
+        rutaActual == Routes.EXAMENES -> "Mis Exámenes"
+        rutaActual?.startsWith("detalle") == true -> "Detalle del Examen"
+        rutaActual == Routes.PERFIL -> "Mi Perfil"
         else -> "OftApp"
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             if (mostrarBarras) {
                 TopAppBar(
-                    title = { Text(titulo) },
+                    title = {
+                        Text(
+                            text = titulo,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    },
                     navigationIcon = {
                         if (rutaActual != Routes.INICIO) {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Volver",
+                                    tint = Color.White
+                                )
                             }
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = AzulPrincipal
+                    )
                 )
             }
         },
         bottomBar = {
             if (mostrarBarras) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = Color.White,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
                     itemsMenu.forEach { item ->
                         val seleccionado = rutaActual == item.ruta ||
-                            (item.ruta == Routes.EXAMENES && rutaActual == Routes.DETALLE)
+                            (item.ruta == Routes.EXAMENES && rutaActual?.startsWith("detalle") == true)
                         NavigationBarItem(
                             selected = seleccionado,
                             onClick = {
@@ -90,7 +115,19 @@ fun OftAppNavigation() {
                                 }
                             },
                             icon = { Icon(item.icono, contentDescription = item.titulo) },
-                            label = { Text(item.titulo) }
+                            label = {
+                                Text(
+                                    item.titulo,
+                                    fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = AzulPrincipal,
+                                selectedTextColor = AzulPrincipal,
+                                indicatorColor = AzulContenedor,
+                                unselectedIconColor = TextoSecundario,
+                                unselectedTextColor = TextoSecundario
+                            )
                         )
                     }
                 }
@@ -151,3 +188,4 @@ fun OftAppNavigation() {
         }
     }
 }
+
