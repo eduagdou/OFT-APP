@@ -3,8 +3,10 @@ package com.example.oftapp.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -18,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,14 +33,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.oftapp.ui.screens.AtencionesScreen
 import com.example.oftapp.ui.screens.DetalleExamenScreen
 import com.example.oftapp.ui.screens.ExamenesScreen
+import com.example.oftapp.ui.screens.HistorialPacienteScreen
 import com.example.oftapp.ui.screens.HomeScreen
 import com.example.oftapp.ui.screens.LoginScreen
 import com.example.oftapp.ui.screens.PerfilScreen
 import com.example.oftapp.ui.theme.AzulContenedor
 import com.example.oftapp.ui.theme.AzulPrincipal
 import com.example.oftapp.ui.theme.TextoSecundario
+import com.example.oftapp.viewmodel.AtencionesViewModel
 import com.example.oftapp.viewmodel.ExamenesViewModel
 import com.example.oftapp.viewmodel.LoginViewModel
 
@@ -45,7 +51,9 @@ private data class ItemMenu(val ruta: String, val titulo: String, val icono: Ima
 
 private val itemsMenu = listOf(
     ItemMenu(Routes.INICIO, "Inicio", Icons.Default.Home),
-    ItemMenu(Routes.EXAMENES, "Exámenes", Icons.Default.List),
+    ItemMenu(Routes.ATENCIONES, "Atenciones", Icons.Default.CalendarMonth),
+    ItemMenu(Routes.EXAMENES, "Exámenes", Icons.Default.Assignment),
+    ItemMenu(Routes.HISTORIAL, "Historial", Icons.Default.History),
     ItemMenu(Routes.PERFIL, "Perfil", Icons.Default.Person)
 )
 
@@ -55,16 +63,21 @@ fun OftAppNavigation() {
     val navController = rememberNavController()
     val loginVm: LoginViewModel = viewModel()
     val examenesVm: ExamenesViewModel = viewModel()
+    val atencionesVm: AtencionesViewModel = viewModel()
+
+    val usuarioActual by loginVm.usuarioLogueado.collectAsState()
 
     val backStack by navController.currentBackStackEntryAsState()
     val rutaActual = backStack?.destination?.route
     val mostrarBarras = rutaActual != null && rutaActual != Routes.LOGIN
 
     val titulo = when {
-        rutaActual == Routes.INICIO -> "OftApp"
-        rutaActual == Routes.EXAMENES -> "Mis Exámenes"
+        rutaActual == Routes.INICIO -> "OftApp - Inicio"
+        rutaActual == Routes.ATENCIONES -> "Atenciones Médicas"
+        rutaActual == Routes.EXAMENES -> "Exámenes Clínicos"
+        rutaActual == Routes.HISTORIAL -> "Historial del Paciente"
         rutaActual?.startsWith("detalle") == true -> "Detalle del Examen"
-        rutaActual == Routes.PERFIL -> "Mi Perfil"
+        rutaActual == Routes.PERFIL -> "Perfil y Permisos"
         else -> "OftApp"
     }
 
@@ -105,7 +118,7 @@ fun OftAppNavigation() {
                 ) {
                     itemsMenu.forEach { item ->
                         val seleccionado = rutaActual == item.ruta ||
-                            (item.ruta == Routes.EXAMENES && rutaActual?.startsWith("detalle") == true)
+                                (item.ruta == Routes.EXAMENES && rutaActual?.startsWith("detalle") == true)
                         NavigationBarItem(
                             selected = seleccionado,
                             onClick = {
@@ -151,14 +164,31 @@ fun OftAppNavigation() {
             }
             composable(Routes.INICIO) {
                 HomeScreen(
-                    viewModel = examenesVm,
-                    nombreUsuario = loginVm.usuario.nombre,
-                    onVerExamenes = { navController.navigate(Routes.EXAMENES) }
+                    usuarioActual = usuarioActual,
+                    examenesViewModel = examenesVm,
+                    atencionesViewModel = atencionesVm,
+                    onVerExamenes = { navController.navigate(Routes.EXAMENES) },
+                    onVerAtenciones = { navController.navigate(Routes.ATENCIONES) },
+                    onVerHistorial = { navController.navigate(Routes.HISTORIAL) }
+                )
+            }
+            composable(Routes.ATENCIONES) {
+                AtencionesScreen(
+                    viewModel = atencionesVm,
+                    usuarioActual = usuarioActual
                 )
             }
             composable(Routes.EXAMENES) {
                 ExamenesScreen(
                     viewModel = examenesVm,
+                    usuarioActual = usuarioActual,
+                    onExamenClick = { id -> navController.navigate(Routes.detalle(id)) }
+                )
+            }
+            composable(Routes.HISTORIAL) {
+                HistorialPacienteScreen(
+                    viewModel = examenesVm,
+                    usuarioActual = usuarioActual,
                     onExamenClick = { id -> navController.navigate(Routes.detalle(id)) }
                 )
             }
@@ -169,16 +199,18 @@ fun OftAppNavigation() {
                 val id = entry.arguments?.getInt("examenId") ?: 0
                 DetalleExamenScreen(
                     examen = examenesVm.obtenerExamen(id),
+                    usuarioActual = usuarioActual,
+                    viewModel = examenesVm,
                     onVolver = { navController.popBackStack() },
                     onIrPerfil = { navController.navigate(Routes.PERFIL) }
                 )
             }
             composable(Routes.PERFIL) {
                 PerfilScreen(
-                    usuario = loginVm.usuario,
-                    paciente = examenesVm.paciente,
+                    usuario = usuarioActual,
+                    listaPacientes = examenesVm.listaPacientes,
                     onCerrarSesion = {
-                        loginVm.limpiar()
+                        loginVm.cerrarSesion()
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(Routes.INICIO) { inclusive = true }
                         }
@@ -188,4 +220,3 @@ fun OftAppNavigation() {
         }
     }
 }
-

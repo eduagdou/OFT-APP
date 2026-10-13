@@ -3,7 +3,9 @@ package com.example.oftapp.ui.navigation
 object Routes {
     const val LOGIN = "login"
     const val INICIO = "inicio"
+    const val ATENCIONES = "atenciones"
     const val EXAMENES = "examenes"
+    const val HISTORIAL = "historial"
     const val DETALLE = "detalle/{examenId}"
     const val PERFIL = "perfil"
 
