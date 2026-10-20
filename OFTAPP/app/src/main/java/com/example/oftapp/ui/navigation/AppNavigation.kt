@@ -209,6 +209,15 @@ fun OftAppNavigation() {
                 PerfilScreen(
                     usuario = usuarioActual,
                     listaPacientes = examenesVm.listaPacientes,
+                    onActualizarNombre = { nuevoNombre ->
+                        loginVm.actualizarNombre(nuevoNombre)
+                    },
+                    onActualizarFoto = { nuevaFotoUri ->
+                        loginVm.actualizarFotoPerfil(nuevaFotoUri)
+                    },
+                    onCambiarClave = { claveActual, nuevaClave ->
+                        loginVm.cambiarClave(claveActual, nuevaClave)
+                    },
                     onCerrarSesion = {
                         loginVm.cerrarSesion()
                         navController.navigate(Routes.LOGIN) {

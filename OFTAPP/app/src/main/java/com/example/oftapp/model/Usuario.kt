@@ -6,5 +6,6 @@ data class Usuario(
     val correo: String,
     val clave: String,
     val rol: Rol = Rol.PACIENTE,
-    val sucursalDefault: String = "Centro Oftalmológico Central"
+    val sucursalDefault: String = "Centro Oftalmológico Central",
+    val fotoPerfilUri: String? = null
 )

@@ -1,7 +1,17 @@
 package com.example.oftapp.ui.screens
 
+import android.content.Intent
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,27 +29,53 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.BusinessCenter
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.MedicalInformation
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.oftapp.model.Paciente
 import com.example.oftapp.model.Rol
@@ -54,14 +90,73 @@ import com.example.oftapp.ui.theme.VerdeContenedor
 import com.example.oftapp.ui.theme.VerdeSecundario
 
 @Composable
+fun rememberBitmapFromUri(uriString: String?): ImageBitmap? {
+    val context = LocalContext.current
+    return remember(uriString) {
+        if (uriString.isNullOrBlank()) null
+        else {
+            try {
+                val uri = Uri.parse(uriString)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source).asImageBitmap()
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri).asImageBitmap()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+}
+
+@Composable
 fun PerfilScreen(
     usuario: Usuario,
     listaPacientes: List<Paciente>,
+    onActualizarNombre: (String) -> Unit = {},
+    onActualizarFoto: (String?) -> Unit = {},
+    onCambiarClave: (claveActual: String, nuevaClave: String) -> String? = { _, _ -> null },
     onCerrarSesion: () -> Unit
 ) {
+    val context = LocalContext.current
     val esPaciente = usuario.rol == Rol.PACIENTE
 
-    // Buscar o crear la información específica del paciente si el usuario es Paciente
+    // Estado para edición de nombre
+    var editandoNombre by remember(usuario.nombre) { mutableStateOf(false) }
+    var nombreInput by remember(usuario.nombre) { mutableStateOf(usuario.nombre) }
+
+    // Estado para cambio de contraseña
+    var mostrarCambioClave by remember { mutableStateOf(false) }
+    var claveActual by remember { mutableStateOf("") }
+    var nuevaClave by remember { mutableStateOf("") }
+    var confirmarClave by remember { mutableStateOf("") }
+
+    var claveActualVisible by remember { mutableStateOf(false) }
+    var nuevaClaveVisible by remember { mutableStateOf(false) }
+    var confirmarClaveVisible by remember { mutableStateOf(false) }
+
+    var mensajeErrorClave by remember { mutableStateOf<String?>(null) }
+    var mensajeExitoClave by remember { mutableStateOf<String?>(null) }
+
+    // Launcher para selección de foto de perfil
+    val bitmapFoto = rememberBitmapFromUri(usuario.fotoPerfilUri)
+    val launcherFoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {}
+            onActualizarFoto(it.toString())
+        }
+    }
+
     val pacienteRelacionado = if (esPaciente) {
         listaPacientes.firstOrNull { it.nombre.equals(usuario.nombre, ignoreCase = true) }
             ?: Paciente(
@@ -85,7 +180,7 @@ fun PerfilScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Tarjeta con Datos Principales del Usuario Activo
+            // 1. Tarjeta con Datos Principales y Foto de Perfil
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -99,29 +194,142 @@ fun PerfilScreen(
                         .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Avatar con iniciales
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .background(AzulPrincipal, shape = CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = usuario.nombre.take(2).uppercase(),
-                            color = Color.White,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                    // Contenedor del Avatar / Foto
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        if (bitmapFoto != null) {
+                            Image(
+                                bitmap = bitmapFoto,
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .border(2.5.dp, AzulPrincipal, CircleShape)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .background(AzulPrincipal, shape = CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = usuario.nombre.take(2).uppercase(),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = AzulPrincipal,
+                            border = BorderStroke(1.5.dp, Color.White),
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickable { launcherFoto.launch("image/*") }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.AddAPhoto,
+                                    contentDescription = "Cambiar Foto",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(Modifier.height(10.dp))
+                    // Botones de gestión de foto
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        TextButton(onClick = { launcherFoto.launch("image/*") }) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cambiar foto", style = MaterialTheme.typography.labelMedium)
+                        }
+                        if (usuario.fotoPerfilUri != null) {
+                            Spacer(Modifier.width(4.dp))
+                            TextButton(
+                                onClick = { onActualizarFoto(null) },
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Quitar foto", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
 
-                    Text(
-                        text = usuario.nombre,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TextoPrincipal,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Spacer(Modifier.height(6.dp))
+
+                    // Edición de Nombre
+                    if (editandoNombre) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = nombreInput,
+                                onValueChange = { nombreInput = it },
+                                label = { Text("Nombre de usuario") },
+                                singleLine = true,
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = AzulPrincipal) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = {
+                                        nombreInput = usuario.nombre
+                                        editandoNombre = false
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Cancelar")
+                                }
+                                Button(
+                                    onClick = {
+                                        if (nombreInput.isNotBlank()) {
+                                            onActualizarNombre(nombreInput)
+                                            editandoNombre = false
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPrincipal),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Guardar")
+                                }
+                            }
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = usuario.nombre,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = TextoPrincipal,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = { editandoNombre = true },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Editar nombre",
+                                    tint = AzulPrincipal,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(4.dp))
 
@@ -176,7 +384,188 @@ fun PerfilScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 2. Tarjeta con Información Específica del Perfil Seleccionado
+            // 2. Tarjeta de Cambio de Contraseña
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, BordeSuave)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { mostrarCambioClave = !mostrarCambioClave }
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = AzulPrincipal)
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Seguridad y Contraseña",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoPrincipal
+                            )
+                            Text(
+                                text = "Cambiar la clave de acceso de esta cuenta",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextoSecundario
+                            )
+                        }
+                        IconButton(onClick = { mostrarCambioClave = !mostrarCambioClave }) {
+                            Icon(
+                                imageVector = if (mostrarCambioClave) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = TextoSecundario
+                            )
+                        }
+                    }
+
+                    if (mostrarCambioClave) {
+                        Spacer(Modifier.height(12.dp))
+
+                        if (mensajeErrorClave != null) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 10.dp)
+                            ) {
+                                Text(
+                                    text = mensajeErrorClave!!,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(10.dp)
+                                )
+                            }
+                        }
+
+                        if (mensajeExitoClave != null) {
+                            Surface(
+                                color = VerdeContenedor,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 10.dp)
+                            ) {
+                                Text(
+                                    text = mensajeExitoClave!!,
+                                    color = VerdeSecundario,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(10.dp)
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = claveActual,
+                            onValueChange = {
+                                claveActual = it
+                                mensajeErrorClave = null
+                                mensajeExitoClave = null
+                            },
+                            label = { Text("Contraseña actual") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AzulPrincipal) },
+                            trailingIcon = {
+                                IconButton(onClick = { claveActualVisible = !claveActualVisible }) {
+                                    Icon(
+                                        imageVector = if (claveActualVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (claveActualVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = nuevaClave,
+                            onValueChange = {
+                                nuevaClave = it
+                                mensajeErrorClave = null
+                                mensajeExitoClave = null
+                            },
+                            label = { Text("Nueva contraseña") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.LockReset, contentDescription = null, tint = AzulPrincipal) },
+                            trailingIcon = {
+                                IconButton(onClick = { nuevaClaveVisible = !nuevaClaveVisible }) {
+                                    Icon(
+                                        imageVector = if (nuevaClaveVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (nuevaClaveVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = confirmarClave,
+                            onValueChange = {
+                                confirmarClave = it
+                                mensajeErrorClave = null
+                                mensajeExitoClave = null
+                            },
+                            label = { Text("Confirmar nueva contraseña") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = AzulPrincipal) },
+                            trailingIcon = {
+                                IconButton(onClick = { confirmarClaveVisible = !confirmarClaveVisible }) {
+                                    Icon(
+                                        imageVector = if (confirmarClaveVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (confirmarClaveVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        Button(
+                            onClick = {
+                                if (nuevaClave != confirmarClave) {
+                                    mensajeErrorClave = "Las contraseñas ingresadas no coinciden."
+                                } else {
+                                    val resError = onCambiarClave(claveActual, nuevaClave)
+                                    if (resError != null) {
+                                        mensajeErrorClave = resError
+                                    } else {
+                                        mensajeExitoClave = "¡Contraseña actualizada exitosamente! Usa tu nueva contraseña en el próximo inicio de sesión."
+                                        claveActual = ""
+                                        nuevaClave = ""
+                                        confirmarClave = ""
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = AzulPrincipal),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Text("Guardar Nueva Contraseña", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // 3. Tarjeta con Información Específica del Perfil Seleccionado
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -305,7 +694,7 @@ fun PerfilScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 3. Tarjeta de Atribuciones del Rol Activo
+            // 4. Tarjeta de Atribuciones del Rol Activo
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -371,7 +760,7 @@ fun PerfilScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // 4. Cerrar Sesión
+            // 5. Cerrar Sesión
             OutlinedButton(
                 onClick = onCerrarSesion,
                 shape = RoundedCornerShape(12.dp),

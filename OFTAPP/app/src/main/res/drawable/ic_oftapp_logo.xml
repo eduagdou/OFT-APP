@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Circle Background -->
+    <path
+        android:pathData="M 60,0 A 60,60 0 1,1 59.99,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="120"
+                android:endY="120"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#004899" />
+                <item android:offset="0.5" android:color="#0066CC" />
+                <item android:offset="1.0" android:color="#00A896" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Outer Eye White Glow -->
+    <path
+        android:pathData="M 30,60 C 43,36 77,36 90,60 C 77,84 43,84 30,60 Z"
+        android:fillColor="#1AFFFFFF" />
+
+    <!-- Outer Eye Contour -->
+    <path
+        android:pathData="M 30,60 C 43,36 77,36 90,60 C 77,84 43,84 30,60 Z"
+        android:strokeWidth="4.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <!-- Iris Outer Circle -->
+    <path
+        android:pathData="M 60,42 A 18,18 0 1,1 59.99,42 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Iris Inner Ring -->
+    <path
+        android:pathData="M 60,45 A 15,15 0 1,1 59.99,45 Z"
+        android:fillColor="#00A896" />
+
+    <!-- Pupil -->
+    <path
+        android:pathData="M 60,51 A 9,9 0 1,1 59.99,51 Z"
+        android:fillColor="#003366" />
+
+    <!-- Light Reflection 1 -->
+    <path
+        android:pathData="M 64,55 A 2.8,2.8 0 1,1 63.99,55 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Light Reflection 2 -->
+    <path
+        android:pathData="M 57,63 A 1.4,1.4 0 1,1 56.99,63 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Optic Focus Crosshairs -->
+    <path
+        android:pathData="M 60,28 L 60,32"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M 60,88 L 60,92"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M 22,60 L 26,60"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M 94,60 L 98,60"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+
+</vector>

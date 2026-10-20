@@ -1,7 +1,6 @@
 package com.example.oftapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +46,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.oftapp.R
 import com.example.oftapp.ui.theme.AzulContenedor
 import com.example.oftapp.ui.theme.AzulPrincipal
 import com.example.oftapp.ui.theme.BordeSuave
@@ -77,19 +79,11 @@ fun LoginScreen(
             Spacer(Modifier.height(12.dp))
 
             // Header con Logo
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .background(AzulContenedor, shape = CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Visibility,
-                    contentDescription = "OftApp Logo",
-                    tint = AzulPrincipal,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+            Image(
+                painter = painterResource(id = R.drawable.ic_oftapp_logo),
+                contentDescription = "OftApp Logo",
+                modifier = Modifier.size(80.dp)
+            )
 
             Spacer(Modifier.height(12.dp))
 
