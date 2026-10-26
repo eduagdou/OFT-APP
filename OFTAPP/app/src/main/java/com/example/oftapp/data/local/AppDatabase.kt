@@ -55,6 +55,17 @@ abstract class AppDatabase : RoomDatabase() {
                     }
                 }
             }
+
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                super.onOpen(db)
+                INSTANCE?.let { database ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        if (database.usuarioDao().obtenerPorId(1) == null) {
+                            poblarBaseDatos(database)
+                        }
+                    }
+                }
+            }
         }
 
         private suspend fun poblarBaseDatos(db: AppDatabase) {
