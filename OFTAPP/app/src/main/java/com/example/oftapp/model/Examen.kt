@@ -14,5 +14,7 @@ data class Examen(
     val estadoEntrega: String = "Disponible en portal", // "Pendiente de firma", "Disponible en portal", "Entregado en sucursal"
     val descripcion: String,
     val resultado: Resultado? = null,
-    val documentos: List<DocumentoSimulado> = emptyList()
+    val documentos: List<DocumentoSimulado> = emptyList(),
+    val sincronizado: Boolean = true,
+    val imagenUrl: String? = null
 )

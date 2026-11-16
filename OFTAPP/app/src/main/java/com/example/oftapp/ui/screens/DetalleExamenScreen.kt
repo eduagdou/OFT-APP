@@ -42,7 +42,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import com.example.oftapp.model.Examen
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
+import com.example.oftapp.ui.components.PdfViewerDialog
+import com.example.oftapp.util.TextToSpeechHelper
 import com.example.oftapp.viewmodel.ExamenesViewModel
 import com.example.oftapp.ui.theme.AzulContenedor
 import com.example.oftapp.ui.theme.AzulPrincipal
@@ -79,6 +83,14 @@ fun DetalleExamenScreen(
 
     var textoResumenMedico by remember { mutableStateOf(examen?.resultado?.resumen ?: "") }
     var textoObservacionMedica by remember { mutableStateOf(examen?.resultado?.observacion ?: "") }
+    var mostrarPdfViewer by remember { mutableStateOf(false) }
+
+    val ttsHelper = remember { TextToSpeechHelper(context) }
+    DisposableEffect(Unit) {
+        onDispose {
+            ttsHelper.shutdown()
+        }
+    }
 
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
     val esSuPropioExamen = examen != null && examen.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true)
@@ -367,6 +379,30 @@ fun DetalleExamenScreen(
 
                                 Spacer(Modifier.height(12.dp))
 
+                                Button(
+                                    onClick = {
+                                        val textoLectura = "Examen ${examen.tipoExamen} de ${examen.pacienteNombre}. Resumen: ${examen.resultado.resumen}. Observación del profesional ${examen.resultado.registradoPor}: ${examen.resultado.observacion}"
+                                        ttsHelper.hablar(textoLectura)
+                                        Toast.makeText(context, "Reproduciendo voz accesible...", Toast.LENGTH_SHORT).show()
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = AzulPrincipal),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VolumeUp,
+                                        contentDescription = "Botón de lectura accesible por voz nativa",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("🔊 Leer Resultados por Voz", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+
+                                Spacer(Modifier.height(12.dp))
+
                                 Text(
                                     text = "Observación Médica del Especialista:",
                                     style = MaterialTheme.typography.titleMedium,
@@ -569,13 +605,14 @@ fun DetalleExamenScreen(
 
                                             OutlinedButton(
                                                 onClick = {
-                                                    Toast.makeText(context, "Visualizando contenido de: ${doc.nombre}", Toast.LENGTH_LONG).show()
+                                                    mostrarPdfViewer = true
+                                                    Toast.makeText(context, "Abriendo PDF nativo con PdfRenderer: ${doc.nombre}", Toast.LENGTH_SHORT).show()
                                                 },
                                                 shape = RoundedCornerShape(8.dp),
                                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                                 modifier = Modifier.height(36.dp)
                                             ) {
-                                                Text("Ver", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                Text("Ver PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                     }
@@ -682,6 +719,13 @@ fun DetalleExamenScreen(
                     Text("Volver a Lista de Exámenes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
+        }
+
+        if (mostrarPdfViewer) {
+            PdfViewerDialog(
+                tituloDocumento = examen?.tipoExamen ?: "Informe Oftalmológico",
+                onDismiss = { mostrarPdfViewer = false }
+            )
         }
     }
 }

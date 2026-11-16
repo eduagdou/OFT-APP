@@ -61,9 +61,24 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     add("kapt", "androidx.room:room-compiler:$roomVersion")
 
+    // DataStore Preferences (Accesibilidad)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // Retrofit & Networking (Consumo API REST HAPI FHIR / Backend)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Coil para carga de imágenes de retina/topografías
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Pruebas Unitarias e Instrumentadas (JUnit, MockK, Coroutines, Compose UI Test)
     testImplementation(libs.junit)
+    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation("io.mockk:mockk-android:1.13.12")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)

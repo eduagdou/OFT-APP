@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,13 +59,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import com.example.oftapp.data.local.AccessibilityPreferencesRepository
+import com.example.oftapp.data.local.AccessibilitySettings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +96,8 @@ import com.example.oftapp.ui.theme.TextoPrincipal
 import com.example.oftapp.ui.theme.TextoSecundario
 import com.example.oftapp.ui.theme.VerdeContenedor
 import com.example.oftapp.ui.theme.VerdeSecundario
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 @Composable
 fun rememberBitmapFromUri(uriString: String?): ImageBitmap? {
@@ -123,6 +133,10 @@ fun PerfilScreen(
 ) {
     val context = LocalContext.current
     val esPaciente = usuario.rol == Rol.PACIENTE
+
+    val scope = rememberCoroutineScope()
+    val accessibilityRepo = remember { AccessibilityPreferencesRepository(context) }
+    val accessibilitySettings by accessibilityRepo.accessibilitySettingsFlow.collectAsState(initial = AccessibilitySettings())
 
     // Estado para edición de nombre
     var editandoNombre by remember(usuario.nombre) { mutableStateOf(false) }
@@ -377,6 +391,103 @@ fun PerfilScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Tarjeta de Accesibilidad Visual y DataStore Preferences
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, BordeSuave),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Accessibility, contentDescription = null, tint = AzulPrincipal)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Accesibilidad Visual (WCAG 2.2 AA)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextoPrincipal
+                            )
+                            Text(
+                                text = "Preferencias guardadas en DataStore",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextoSecundario
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Modo Alto Contraste", fontWeight = FontWeight.SemiBold, color = TextoPrincipal)
+                            Text("Aumenta el contraste de colores para baja visión", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                        }
+                        Switch(
+                            checked = accessibilitySettings.altoContraste,
+                            onCheckedChange = { check ->
+                                scope.launch {
+                                    accessibilityRepo.setAltoContraste(check)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AzulPrincipal)
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Controles y Botones Grandes", fontWeight = FontWeight.SemiBold, color = TextoPrincipal)
+                            Text("Ajusta el área de toque táctil a mínimo 56dp", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                        }
+                        Switch(
+                            checked = accessibilitySettings.controlesGrandes,
+                            onCheckedChange = { check ->
+                                scope.launch {
+                                    accessibilityRepo.setControlesGrandes(check)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AzulPrincipal)
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Lectura de Voz Automática", fontWeight = FontWeight.SemiBold, color = TextoPrincipal)
+                            Text("Activa TextToSpeech nativo en diagnósticos", style = MaterialTheme.typography.bodySmall, color = TextoSecundario)
+                        }
+                        Switch(
+                            checked = accessibilitySettings.lecturaVozAutomatica,
+                            onCheckedChange = { check ->
+                                scope.launch {
+                                    accessibilityRepo.setLecturaVozAutomatica(check)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AzulPrincipal)
                         )
                     }
                 }

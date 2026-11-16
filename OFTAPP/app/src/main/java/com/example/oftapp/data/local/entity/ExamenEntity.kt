@@ -18,5 +18,6 @@ data class ExamenEntity(
     val estado: String, // "Pendiente", "En Proceso", "Realizado"
     val comentarios: String? = null,
     val sucursal: String,
-    val archivosAdjuntos: String? = null
+    val archivosAdjuntos: String? = null,
+    val sincronizado: Boolean = true
 )
