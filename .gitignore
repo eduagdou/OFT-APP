@@ -1,0 +1,17 @@
+# Android / Gradle
+.gradle/
+**/build/
+**/.kotlin/
+local.properties
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Backend runtime and local secrets
+backend/data/
+backend/target/
+backend/application-local.properties
+backend/server*.log
+.tools/

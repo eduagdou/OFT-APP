@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.oftapp.data.local.AppDatabase
+import com.example.oftapp.data.local.entity.PacienteEntity
 import com.example.oftapp.data.local.entity.UsuarioEntity
 import com.example.oftapp.data.repository.AppRepository
 import com.example.oftapp.model.Rol
@@ -15,75 +16,69 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class LoginUiState(
-    val correo: String = "paciente001@pacientes.com",
-    val clave: String = "1234",
+    val correo: String = "",
+    val clave: String = "",
     val error: String? = null
+)
+
+data class RegistroState(
+    val rut: String = "",
+    val nombre: String = "",
+    val apellidos: String = "",
+    val edad: String = "30",
+    val correo: String = "",
+    val clave: String = "",
+    val rol: String = "PACIENTE",
+    val sucursal: String = "Sucursal Providencia",
+    val error: String? = null,
+    val exitoMensaje: String? = null
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
-    private val repository = AppRepository(db.pacienteDao(), db.usuarioDao(), db.examenDao())
-
-    private val defaultUsuarios = listOf(
-        Usuario(1, "Camila Rojas", "paciente001@pacientes.com", "1234", Rol.PACIENTE, "Sucursal Providencia"),
-        Usuario(2, "Dr. Ricardo Sepúlveda", "medico001@empleados.com", "1234", Rol.MEDICO_OFTALMOLOGO, "Sucursal Central"),
-        Usuario(3, "TM. Andrea Morales", "tecmed001@empleados.com", "1234", Rol.TECNOLOGO_MEDICO, "Sucursal Providencia"),
-        Usuario(4, "Carlos Fuentes", "adminsec001@empleados.com", "1234", Rol.PERSONAL_ADMINISTRATIVO, "Sucursal Central"),
-        Usuario(5, "Prof. Manuel Silva", "admin001@admin.com", "1234", Rol.ADMINISTRADOR, "Todas las sucursales")
+    private val repository = AppRepository(
+        db.pacienteDao(), db.usuarioDao(), db.examenDao(), db.documentoDao(), db.atencionDao()
     )
 
-    private val _listaUsuarios = MutableStateFlow<List<Usuario>>(defaultUsuarios)
+    private val _listaUsuarios = MutableStateFlow<List<Usuario>>(emptyList())
     val listaUsuarios: StateFlow<List<Usuario>> = _listaUsuarios.asStateFlow()
 
-    val usuariosFicticios: List<Usuario> get() = _listaUsuarios.value
-
-    private val _usuarioLogueado = MutableStateFlow(defaultUsuarios[0])
+    private val _usuarioLogueado = MutableStateFlow(
+        Usuario(
+            id = 0,
+            nombre = "Usuario no autenticado",
+            correo = "",
+            clave = "",
+            rol = Rol.PACIENTE,
+            sucursalDefault = ""
+        )
+    )
     val usuarioLogueado: StateFlow<Usuario> = _usuarioLogueado.asStateFlow()
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    private val _registroState = MutableStateFlow(RegistroState())
+    val registroState: StateFlow<RegistroState> = _registroState.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.obtenerUsuarios().collect { entities ->
-                if (entities.isEmpty()) {
-                    // Si la tabla de usuarios en la BD local está vacía, la poblamos
-                    poblarUsuariosEnBaseDatos()
-                } else {
-                    val usuarios = entities.map { entity ->
-                        Usuario(
-                            id = entity.id.toInt(),
-                            nombre = "${entity.nombre} ${entity.apellidos}".trim(),
-                            correo = entity.correo,
-                            clave = entity.clave,
-                            rol = parseRol(entity.rol),
-                            sucursalDefault = entity.sucursal,
-                            fotoPerfilUri = entity.fotoPerfilUri
-                        )
-                    }
-                    _listaUsuarios.value = usuarios
-                    val actualId = _usuarioLogueado.value.id
-                    val encontrado = usuarios.firstOrNull { it.id == actualId } ?: usuarios[0]
-                    _usuarioLogueado.value = encontrado
+                val usuarios = entities.map { entity ->
+                    Usuario(
+                        id = entity.id.toInt(),
+                        nombre = "${entity.nombre} ${entity.apellidos}".trim(),
+                        correo = entity.correo,
+                        clave = "",
+                        rol = parseRol(entity.rol),
+                        sucursalDefault = entity.sucursal,
+                        fotoPerfilUri = entity.fotoPerfilUri
+                    )
                 }
+                _listaUsuarios.value = usuarios
             }
         }
-    }
-
-    private suspend fun poblarUsuariosEnBaseDatos() {
-        val entidades = listOf(
-            UsuarioEntity(1, "18.432.109-K", "Camila", "Rojas", 34, "+56 9 8765 4321", "paciente001@pacientes.com", "1234", "PACIENTE", "Sucursal Providencia"),
-            UsuarioEntity(2, "15.111.222-3", "Dr. Ricardo", "Sepúlveda", 45, "+56 9 1111 2222", "medico001@empleados.com", "1234", "MEDICO_OFTALMOLOGO", "Sucursal Central"),
-            UsuarioEntity(3, "16.333.444-5", "TM. Andrea", "Morales", 38, "+56 9 3333 4444", "tecmed001@empleados.com", "1234", "TECNOLOGO_MEDICO", "Sucursal Providencia"),
-            UsuarioEntity(4, "17.555.666-7", "Carlos", "Fuentes", 29, "+56 9 5555 6666", "adminsec001@empleados.com", "1234", "PERSONAL_ADMINISTRATIVO", "Sucursal Central"),
-            UsuarioEntity(5, "10.777.888-9", "Prof. Manuel", "Silva", 55, "+56 9 7777 8888", "admin001@admin.com", "1234", "ADMINISTRADOR", "Todas las sucursales")
-        )
-        repository.insertarUsuario(entidades[0])
-        repository.insertarUsuario(entidades[1])
-        repository.insertarUsuario(entidades[2])
-        repository.insertarUsuario(entidades[3])
-        repository.insertarUsuario(entidades[4])
     }
 
     private fun parseRol(rolStr: String): Rol {
@@ -97,9 +92,92 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun onCorreoChange(valor: String) = _uiState.update { it.copy(correo = valor, error = null) }
     fun onClaveChange(valor: String) = _uiState.update { it.copy(clave = valor, error = null) }
 
-    fun seleccionarUsuarioDemo(u: Usuario) {
-        val usuarioActualizado = _listaUsuarios.value.firstOrNull { it.id == u.id } ?: u
-        _uiState.update { it.copy(correo = usuarioActualizado.correo, clave = usuarioActualizado.clave, error = null) }
+    fun seleccionarUsuarioAuto(u: Usuario) {
+        _uiState.update { it.copy(correo = u.correo, clave = u.clave, error = null) }
+    }
+
+    fun onRegRutChange(v: String) = _registroState.update { it.copy(rut = v, error = null) }
+    fun onRegNombreChange(v: String) = _registroState.update { it.copy(nombre = v, error = null) }
+    fun onRegApellidosChange(v: String) = _registroState.update { it.copy(apellidos = v, error = null) }
+    fun onRegEdadChange(v: String) = _registroState.update { it.copy(edad = v, error = null) }
+    fun onRegCorreoChange(v: String) = _registroState.update { it.copy(correo = v, error = null) }
+    fun onRegClaveChange(v: String) = _registroState.update { it.copy(clave = v, error = null) }
+    fun onRegRolChange(v: String) = _registroState.update { it.copy(rol = v, error = null) }
+    fun onRegSucursalChange(v: String) = _registroState.update { it.copy(sucursal = v, error = null) }
+
+    fun registrarUsuario(): Boolean {
+        val r = _registroState.value
+        if (r.rut.isBlank()) {
+            _registroState.update { it.copy(error = "El RUT es obligatorio") }
+            return false
+        }
+        if (r.nombre.isBlank() || r.apellidos.isBlank()) {
+            _registroState.update { it.copy(error = "El nombre y apellidos son obligatorios") }
+            return false
+        }
+        if (r.correo.isBlank() || !r.correo.contains("@")) {
+            _registroState.update { it.copy(error = "Ingrese un correo electrónico válido") }
+            return false
+        }
+        if (r.clave.length < 4) {
+            _registroState.update { it.copy(error = "La contraseña debe tener al menos 4 caracteres") }
+            return false
+        }
+
+        viewModelScope.launch {
+            val nuevaEntidadUsuario = UsuarioEntity(
+                rut = r.rut.trim(),
+                nombre = r.nombre.trim(),
+                apellidos = r.apellidos.trim(),
+                edad = r.edad.toIntOrNull() ?: 30,
+                telefono = "+56 9 1234 5678",
+                correo = r.correo.trim().lowercase(),
+                clave = r.clave.trim(),
+                rol = r.rol,
+                sucursal = r.sucursal
+            )
+
+            val cuentaInsforge = repository.signUp(
+                r.correo.trim().lowercase(),
+                r.clave.trim(),
+                "${r.nombre.trim()} ${r.apellidos.trim()}".trim()
+            )
+
+            repository.insertarUsuario(nuevaEntidadUsuario)
+
+            if (r.rol == "PACIENTE") {
+                val nuevaEntidadPaciente = PacienteEntity(
+                    rut = r.rut.trim(),
+                    nombre = r.nombre.trim(),
+                    apellidos = r.apellidos.trim(),
+                    edad = r.edad.toIntOrNull() ?: 30,
+                    prevision = "Fonasa",
+                    telefono = "+56 9 1234 5678",
+                    correo = r.correo.trim().lowercase(),
+                    clave = r.clave.trim()
+                )
+                repository.insertarPaciente(nuevaEntidadPaciente)
+            }
+
+            val nuevoUsuario = Usuario(
+                id = (System.currentTimeMillis() % 100000).toInt(),
+                nombre = "${r.nombre.trim()} ${r.apellidos.trim()}",
+                correo = r.correo.trim().lowercase(),
+                clave = r.clave.trim(),
+                rol = parseRol(r.rol),
+                sucursalDefault = r.sucursal
+            )
+
+            _listaUsuarios.update { it + nuevoUsuario }
+            _registroState.update {
+                it.copy(
+                    error = if (cuentaInsforge == null) "La cuenta local fue creada, pero InsForge rechazó el registro. Verifica correo y contraseña." else null,
+                    exitoMensaje = if (cuentaInsforge == null) null else "¡Cuenta creada y conectada a InsForge! Revisa tu correo si se requiere verificación."
+                )
+            }
+            _uiState.update { it.copy(correo = r.correo.trim().lowercase(), clave = r.clave.trim()) }
+        }
+        return true
     }
 
     fun iniciarSesion(onExito: () -> Unit) {
@@ -107,23 +185,78 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         val correoClean = s.correo.trim().lowercase()
         val claveClean = s.clave.trim()
 
-        val usuariosBase = if (_listaUsuarios.value.isNotEmpty()) _listaUsuarios.value else defaultUsuarios
-        val userMatch = usuariosBase.firstOrNull { it.correo.lowercase() == correoClean }
+        if (correoClean.isBlank() || claveClean.isBlank()) {
+            _uiState.update { it.copy(error = "Debe ingresar correo y contraseña.") }
+            return
+        }
 
-        if (userMatch != null && (claveClean == userMatch.clave || claveClean == "1234")) {
-            _usuarioLogueado.value = userMatch
-            _uiState.update { it.copy(error = null) }
-            onExito()
-        } else {
-            _uiState.update { it.copy(error = "Credenciales incorrectas. Verifique el email ingresado o la contraseña.") }
+        viewModelScope.launch {
+            val sesionInsforge = repository.signIn(correoClean, claveClean)
+            if (sesionInsforge != null) {
+                val usuarioDb = repository.loginUsuario(correoClean, claveClean)
+                val usuarioRemoto = usuarioDb?.let {
+                    Usuario(
+                        id = it.id.toInt(),
+                        nombre = "${it.nombre} ${it.apellidos}".trim(),
+                        correo = it.correo,
+                        clave = it.clave,
+                        rol = parseRol(it.rol),
+                        sucursalDefault = it.sucursal,
+                        fotoPerfilUri = it.fotoPerfilUri
+                    )
+                } ?: Usuario(
+                    id = 0,
+                    nombre = sesionInsforge.user.email,
+                    correo = sesionInsforge.user.email,
+                    clave = "",
+                    rol = when (correoClean) {
+                        "medico@oftapp.demo" -> Rol.MEDICO_OFTALMOLOGO
+                        "tecnologo@oftapp.demo" -> Rol.TECNOLOGO_MEDICO
+                        "administrativo@oftapp.demo" -> Rol.PERSONAL_ADMINISTRATIVO
+                        "admin@oftapp.demo" -> Rol.ADMINISTRADOR
+                        else -> Rol.PACIENTE
+                    },
+                    sucursalDefault = "Sucursal asignada"
+                )
+
+                _usuarioLogueado.value = usuarioRemoto
+                _uiState.update { it.copy(error = null) }
+                repository.sincronizarConInsforge()
+                onExito()
+                return@launch
+            }
+
+            val usuarioLocal = repository.loginUsuario(correoClean, claveClean)
+            if (usuarioLocal != null) {
+                _usuarioLogueado.value = Usuario(
+                    id = usuarioLocal.id.toInt(),
+                    nombre = "${usuarioLocal.nombre} ${usuarioLocal.apellidos}".trim(),
+                    correo = usuarioLocal.correo,
+                    clave = usuarioLocal.clave,
+                    rol = parseRol(usuarioLocal.rol),
+                    sucursalDefault = usuarioLocal.sucursal,
+                    fotoPerfilUri = usuarioLocal.fotoPerfilUri
+                )
+                _uiState.update { it.copy(error = null) }
+                onExito()
+                return@launch
+            }
+
+            _usuarioLogueado.value = Usuario(
+                id = 0,
+                nombre = "Usuario no autenticado",
+                correo = "",
+                clave = "",
+                rol = Rol.PACIENTE,
+                sucursalDefault = ""
+            )
+            _uiState.update { it.copy(error = "No se pudo iniciar sesión en InsForge. Verifica el correo y la contraseña.") }
         }
     }
 
     fun cerrarSesion() {
         val actual = _usuarioLogueado.value
-        val userActualizado = _listaUsuarios.value.firstOrNull { it.id == actual.id } ?: _listaUsuarios.value.getOrElse(0) { actual }
-        _usuarioLogueado.value = userActualizado
-        _uiState.value = LoginUiState(correo = userActualizado.correo, clave = userActualizado.clave)
+        _uiState.value = LoginUiState(correo = actual.correo, clave = actual.clave)
     }
 
     fun actualizarNombre(nuevoNombre: String) {
@@ -156,7 +289,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         val usuarioActual = _usuarioLogueado.value
 
         if (claveActual != usuarioActual.clave) {
-            return "La contraseña actual es incorrecta."
+            return "La contraseña actual no coincide con la sesión local."
         }
         if (nuevaClave.trim().length < 4) {
             return "La nueva contraseña debe tener al menos 4 caracteres."
@@ -165,13 +298,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             return "La nueva contraseña debe ser diferente a la contraseña actual."
         }
 
-        val idActual = usuarioActual.id
-        val claveLimpia = nuevaClave.trim()
-
         viewModelScope.launch {
-            val userEntity = repository.obtenerUsuarioPorId(idActual.toLong())
-            if (userEntity != null) {
-                repository.actualizarUsuario(userEntity.copy(clave = claveLimpia))
+            val enviado = repository.solicitarRestablecimientoCorreo(usuarioActual.correo)
+            if (!enviado) {
+                _uiState.update { it.copy(error = "No se pudo enviar el restablecimiento de contraseña.") }
             }
         }
 

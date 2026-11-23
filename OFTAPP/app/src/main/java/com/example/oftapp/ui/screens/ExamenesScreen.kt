@@ -1,5 +1,6 @@
 package com.example.oftapp.ui.screens
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
@@ -35,6 +37,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -55,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -64,15 +72,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
-import com.example.oftapp.ui.theme.VerdeSecundario
 import com.example.oftapp.viewmodel.ExamenesViewModel
+import java.util.Calendar
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExamenesScreen(
     viewModel: ExamenesViewModel,
     usuarioActual: Usuario,
     onExamenClick: (Int) -> Unit
 ) {
+    val context = LocalContext.current
     val examenes by viewModel.examenes.collectAsState()
     val formState by viewModel.formExamenState.collectAsState()
 
@@ -80,11 +91,30 @@ fun ExamenesScreen(
     var filtroSeleccionado by remember { mutableStateOf("Todos") }
     var mostrarDialogoCrear by remember { mutableStateOf(false) }
 
+    // DatePicker setup
+    val calendar = remember { Calendar.getInstance() }
+    val datePickerDialog = remember {
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val formatted = String.format(Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year)
+                viewModel.onFechaChange(formatted)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+
+    // Autocomplete Paciente Dropdown setup
+    var expandedPacienteMenu by remember { mutableStateOf(false) }
+    val pacientesDisponibles = viewModel.listaPacientes
+
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
     val puedeCrearExamen = usuarioActual.rol.puedeCrearExamen()
 
     val examenesBase = if (esPaciente) {
-        examenes.filter { it.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true) }
+        examenes.filter { it.pacienteId == 4 }
     } else {
         examenes
     }
@@ -392,14 +422,57 @@ fun ExamenesScreen(
 
                         Spacer(Modifier.height(14.dp))
 
-                        OutlinedTextField(
-                            value = formState.pacienteNombre,
-                            onValueChange = viewModel::onPacienteNombreChange,
-                            label = { Text("Nombre del Paciente (*)") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                        // Autocompletado del Paciente
+                        ExposedDropdownMenuBox(
+                            expanded = expandedPacienteMenu,
+                            onExpandedChange = { expandedPacienteMenu = !expandedPacienteMenu },
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            OutlinedTextField(
+                                value = formState.pacienteNombre,
+                                onValueChange = {
+                                    viewModel.onPacienteNombreChange(it)
+                                    expandedPacienteMenu = true
+                                },
+                                label = { Text("Paciente Autocompletable (*)") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPacienteMenu)
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+
+                            val sugerencias = pacientesDisponibles.filter {
+                                it.nombre.contains(formState.pacienteNombre, ignoreCase = true) ||
+                                it.rutFicticio.contains(formState.pacienteNombre, ignoreCase = true)
+                            }
+
+                            if (sugerencias.isNotEmpty()) {
+                                ExposedDropdownMenu(
+                                    expanded = expandedPacienteMenu,
+                                    onDismissRequest = { expandedPacienteMenu = false }
+                                ) {
+                                    sugerencias.forEach { pac ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text(pac.nombre, fontWeight = FontWeight.Bold)
+                                                    Text("RUT: ${pac.rutFicticio}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            },
+                                            onClick = {
+                                                viewModel.onPacienteNombreChange(pac.nombre)
+                                                viewModel.onPacienteRutChange(pac.rutFicticio)
+                                                expandedPacienteMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         Spacer(Modifier.height(10.dp))
 
@@ -425,14 +498,25 @@ fun ExamenesScreen(
 
                         Spacer(Modifier.height(10.dp))
 
-                        OutlinedTextField(
-                            value = formState.fecha,
-                            onValueChange = viewModel::onFechaChange,
-                            label = { Text("Fecha (ej. 10/11/2026) (*)") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // Selector de fecha visual con DatePickerDialog
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = formState.fecha,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Fecha del Examen (*)") },
+                                trailingIcon = {
+                                    IconButton(onClick = { datePickerDialog.show() }) {
+                                        Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar Fecha", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { datePickerDialog.show() }
+                            )
+                        }
 
                         Spacer(Modifier.height(10.dp))
 
@@ -475,6 +559,17 @@ fun ExamenesScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        OutlinedTextField(
+                            value = formState.pacienteRut,
+                            onValueChange = viewModel::onPacienteRutChange,
+                            label = { Text("RUT del Paciente (*)") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(10.dp))
 
                         formState.error?.let { err ->
                             Spacer(Modifier.height(10.dp))

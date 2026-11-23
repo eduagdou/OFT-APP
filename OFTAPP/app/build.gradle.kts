@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -17,6 +19,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Emulador: http://10.0.2.2:8080/. Producción: -PbackendUrl=https://api.example.com/
+        buildConfigField(
+            "String",
+            "BACKEND_URL",
+            "\"${providers.gradleProperty("backendUrl").orElse("http://10.0.2.2:8080/").get()}\""
+        )
+        buildConfigField("String", "INSFORGE_ANON_KEY", "\"${insforgeAnonKey}\"")
     }
 
     buildTypes {
@@ -37,6 +46,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -84,3 +94,10 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val insforgeAnonKey = localProperties.getProperty("insforgeAnonKey", "")

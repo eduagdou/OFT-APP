@@ -1,6 +1,11 @@
 package com.example.oftapp.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,13 +52,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -61,6 +66,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.oftapp.data.local.AccessibilityPreferencesRepository
+import com.example.oftapp.data.local.AccessibilitySettings
 import com.example.oftapp.model.Examen
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
@@ -69,6 +76,8 @@ import com.example.oftapp.ui.components.ZoomableImageDialog
 import com.example.oftapp.ui.theme.VerdeSecundario
 import com.example.oftapp.util.TextToSpeechHelper
 import com.example.oftapp.viewmodel.ExamenesViewModel
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun DetalleExamenScreen(
@@ -80,17 +89,72 @@ fun DetalleExamenScreen(
 ) {
     val context = LocalContext.current
 
+    val accessibilityRepo = remember { AccessibilityPreferencesRepository(context) }
+    val accessibilitySettings by accessibilityRepo.accessibilitySettingsFlow.collectAsState(initial = AccessibilitySettings())
+
     var textoResumenMedico by remember { mutableStateOf(examen?.resultado?.resumen ?: "") }
     var textoObservacionMedica by remember { mutableStateOf(examen?.resultado?.observacion ?: "") }
+
     var mostrarPdfViewer by remember { mutableStateOf(false) }
+    var pdfUriParaVer by remember { mutableStateOf<String?>(null) }
+    var tituloPdfParaVer by remember { mutableStateOf("Informe Oftalmológico") }
+
     var mostrarImageViewer by remember { mutableStateOf(false) }
     var tituloImagenViewer by remember { mutableStateOf("Topografía Corneal / Retina") }
     var urlImagenViewer by remember { mutableStateOf("https://picsum.photos/800/800") }
 
     val ttsHelper = remember { TextToSpeechHelper(context) }
+    androidx.compose.runtime.LaunchedEffect(accessibilitySettings.lecturaVozAutomatica) {
+        ttsHelper.ttsHabilitado = accessibilitySettings.lecturaVozAutomatica
+    }
     DisposableEffect(Unit) {
         onDispose {
             ttsHelper.shutdown()
+        }
+    }
+
+    // Picker para subir PDF real desde el dispositivo y guardarlo en BD
+    val launcherPdf = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { pdfUri ->
+            try {
+                var fileName = "Documento_Examen.pdf"
+                var fileSize = "1.0 MB"
+
+                context.contentResolver.query(pdfUri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (cursor.moveToFirst()) {
+                        if (nameIndex != -1) fileName = cursor.getString(nameIndex)
+                        if (sizeIndex != -1) {
+                            val bytes = cursor.getLong(sizeIndex)
+                            fileSize = String.format(java.util.Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0))
+                        }
+                    }
+                }
+
+                // Guardar copia local persistente
+                val file = File(context.filesDir, "pdf_${System.currentTimeMillis()}_$fileName")
+                context.contentResolver.openInputStream(pdfUri)?.use { input ->
+                    FileOutputStream(file).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (examen != null) {
+                    viewModel.adjuntarDocumentoPdfReal(
+                        examenId = examen.id,
+                        nombreArchivo = fileName,
+                        tamanio = fileSize,
+                        uriPath = file.toURI().toString()
+                    )
+                    Toast.makeText(context, "¡Documento PDF subido y guardado en la base de datos!", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Error al guardar el archivo PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -181,7 +245,7 @@ fun DetalleExamenScreen(
                         .fillMaxWidth()
                         .clickable {
                             val txt = "Detalle del examen ${examen.tipoExamen}. Paciente: ${examen.pacienteNombre}. Ojo evaluado: ${examen.ojoEvaluado}. Fecha: ${examen.fecha}. Sucursal: ${examen.sucursal}. Especialista: ${examen.profesional}. Estado: ${examen.estado}."
-                            ttsHelper.hablar(txt)
+                            ttsHelper.hablar(txt, accessibilitySettings.lecturaVozAutomatica)
                         }
                         .semantics { contentDescription = "Información general del examen ${examen.tipoExamen} de ${examen.pacienteNombre}" },
                     shape = RoundedCornerShape(16.dp),
@@ -300,7 +364,7 @@ fun DetalleExamenScreen(
                         .clickable {
                             val res = if (examen.resultado != null) "Resumen del resultado: ${examen.resultado.resumen}. Observación del especialista ${examen.resultado.registradoPor}: ${examen.resultado.observacion}" else "Aún no hay resultado registrado."
                             val txt = "Resultado clínico y entrega. Estado de entrega: ${examen.estadoEntrega}. $res"
-                            ttsHelper.hablar(txt)
+                            ttsHelper.hablar(txt, accessibilitySettings.lecturaVozAutomatica)
                         }
                         .semantics { contentDescription = "Sección de resultado clínico y lecturas de voz accesibles" },
                     shape = RoundedCornerShape(16.dp),
@@ -408,7 +472,7 @@ fun DetalleExamenScreen(
                                 Button(
                                     onClick = {
                                         val textoLectura = "Examen ${examen.tipoExamen} de ${examen.pacienteNombre}. Resumen: ${examen.resultado.resumen}. Observación del profesional ${examen.resultado.registradoPor}: ${examen.resultado.observacion}"
-                                        ttsHelper.hablar(textoLectura)
+                                        ttsHelper.hablar(textoLectura, activado = true)
                                         Toast.makeText(context, "Reproduciendo voz accesible TalkBack...", Toast.LENGTH_SHORT).show()
                                     },
                                     shape = RoundedCornerShape(12.dp),
@@ -580,20 +644,15 @@ fun DetalleExamenScreen(
                             if (usuarioActual.rol.puedeAdjuntarDocumentos()) {
                                 OutlinedButton(
                                     onClick = {
-                                        viewModel.adjuntarDocumentoSimulado(
-                                            examenId = examen.id,
-                                            nombreArchivo = "Informe_Anexo_${examen.tipoExamen.replace(" ", "")}.pdf",
-                                            tipoArchivo = "PDF"
-                                        )
-                                        Toast.makeText(context, "Documento simulado adjuntado exitosamente", Toast.LENGTH_SHORT).show()
+                                        launcherPdf.launch("application/pdf")
                                     },
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     modifier = Modifier
                                         .height(38.dp)
-                                        .semantics { contentDescription = "Botón para adjuntar nuevo informe PDF" }
+                                        .semantics { contentDescription = "Botón para subir informe PDF a la base de datos" }
                                 ) {
-                                    Text("+ Adjuntar PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("+ Subir PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -668,6 +727,8 @@ fun DetalleExamenScreen(
                                                         urlImagenViewer = "https://picsum.photos/id/1069/800/800"
                                                         mostrarImageViewer = true
                                                     } else {
+                                                        tituloPdfParaVer = doc.nombre
+                                                        pdfUriParaVer = doc.uriPath
                                                         mostrarPdfViewer = true
                                                     }
                                                 },
@@ -791,10 +852,11 @@ fun DetalleExamenScreen(
             }
         }
 
-        // Visor de PDF con PdfRenderer Nativo
+        // Visor de PDF con PdfRenderer Nativo (soporta archivos PDF reales seleccionados de BD/almacenamiento)
         if (mostrarPdfViewer) {
             PdfViewerDialog(
-                tituloDocumento = examen?.tipoExamen ?: "Informe Oftalmológico",
+                tituloDocumento = tituloPdfParaVer,
+                uriString = pdfUriParaVer,
                 onDismiss = { mostrarPdfViewer = false }
             )
         }

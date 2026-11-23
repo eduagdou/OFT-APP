@@ -26,10 +26,10 @@ enum class Rol(
     );
 
     fun puedeCrearAtencion(): Boolean =
-        this == ADMINISTRADOR || this == PERSONAL_ADMINISTRATIVO || this == TECNOLOGO_MEDICO
+        this == MEDICO_OFTALMOLOGO || this == TECNOLOGO_MEDICO
 
     fun puedeCrearExamen(): Boolean =
-        this == ADMINISTRADOR || this == TECNOLOGO_MEDICO
+        this == MEDICO_OFTALMOLOGO || this == TECNOLOGO_MEDICO
 
     fun puedeAdjuntarDocumentos(): Boolean =
         this == ADMINISTRADOR || this == TECNOLOGO_MEDICO

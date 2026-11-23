@@ -45,6 +45,7 @@ import androidx.navigation.navArgument
 import com.example.oftapp.data.local.AccessibilityPreferencesRepository
 import com.example.oftapp.data.local.AccessibilitySettings
 import com.example.oftapp.model.Rol
+import com.example.oftapp.model.Usuario
 import com.example.oftapp.ui.screens.AtencionesScreen
 import com.example.oftapp.ui.screens.DetalleExamenScreen
 import com.example.oftapp.ui.screens.ExamenesScreen
@@ -81,6 +82,7 @@ fun OftAppNavigation() {
     val atencionesVm: AtencionesViewModel = viewModel()
 
     val usuarioActual by loginVm.usuarioLogueado.collectAsState()
+
     val todosExamenes by examenesVm.examenes.collectAsState()
     val todasAtenciones by atencionesVm.atenciones.collectAsState()
 
@@ -88,6 +90,9 @@ fun OftAppNavigation() {
     val accessibilitySettings by accessibilityRepo.accessibilitySettingsFlow.collectAsState(initial = AccessibilitySettings())
 
     val ttsHelper = remember { TextToSpeechHelper(context) }
+    LaunchedEffect(accessibilitySettings.lecturaVozAutomatica) {
+        ttsHelper.ttsHabilitado = accessibilitySettings.lecturaVozAutomatica
+    }
     DisposableEffect(Unit) {
         onDispose {
             ttsHelper.shutdown()
@@ -103,8 +108,9 @@ fun OftAppNavigation() {
 
     // Datos calculados para lectura de voz completa
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
-    val examenesVisibles = if (esPaciente) todosExamenes.filter { it.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true) } else todosExamenes
-    val atencionesVisibles = if (esPaciente) todasAtenciones.filter { it.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true) } else todasAtenciones
+    val nombrePacienteSesion = usuarioActual.nombre.lowercase()
+    val examenesVisibles = if (esPaciente) todosExamenes.filter { it.pacienteId == 4 } else todosExamenes
+    val atencionesVisibles = if (esPaciente) todasAtenciones.filter { it.pacienteId == 4 } else todasAtenciones
     val pendientes = examenesVisibles.count { it.estado == "Pendiente" }
     val realizados = examenesVisibles.count { it.estado == "Realizado" }
     val atencionProx = atencionesVisibles.firstOrNull { it.estado == "Programada" } ?: atencionesVisibles.firstOrNull()

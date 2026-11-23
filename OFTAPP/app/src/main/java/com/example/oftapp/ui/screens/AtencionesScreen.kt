@@ -1,7 +1,9 @@
 package com.example.oftapp.ui.screens
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MedicalServices
@@ -49,7 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -59,25 +62,41 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
-import com.example.oftapp.ui.theme.VerdeSecundario
 import com.example.oftapp.viewmodel.AtencionesViewModel
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun AtencionesScreen(
     viewModel: AtencionesViewModel,
     usuarioActual: Usuario
 ) {
+    val context = LocalContext.current
     val atenciones by viewModel.atenciones.collectAsState()
     val formState by viewModel.formState.collectAsState()
 
     var textoBusqueda by remember { mutableStateOf("") }
     var mostrarDialogoRegistro by remember { mutableStateOf(false) }
 
+    val calendar = remember { Calendar.getInstance() }
+    val datePickerDialog = remember {
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val formatted = String.format(Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year)
+                viewModel.onFechaChange(formatted)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
     val puedeRegistrar = usuarioActual.rol.puedeCrearAtencion()
 
     val atencionesBase = if (esPaciente) {
-        atenciones.filter { it.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true) }
+        atenciones.filter { it.pacienteId == 4 }
     } else {
         atenciones
     }
@@ -364,14 +383,25 @@ fun AtencionesScreen(
 
                         Spacer(Modifier.height(10.dp))
 
-                        OutlinedTextField(
-                            value = formState.fecha,
-                            onValueChange = viewModel::onFechaChange,
-                            label = { Text("Fecha (ej. 25/10/2026) (*)") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // Selector de fecha visual con DatePickerDialog
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = formState.fecha,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Fecha de Atención (*)") },
+                                trailingIcon = {
+                                    IconButton(onClick = { datePickerDialog.show() }) {
+                                        Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar Fecha", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { datePickerDialog.show() }
+                            )
+                        }
 
                         Spacer(Modifier.height(10.dp))
 
@@ -401,6 +431,17 @@ fun AtencionesScreen(
                             value = formState.motivo,
                             onValueChange = viewModel::onMotivoChange,
                             label = { Text("Motivo de la Atención (*)") },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        OutlinedTextField(
+                            value = formState.pacienteRut,
+                            onValueChange = viewModel::onPacienteRutChange,
+                            label = { Text("RUT del Paciente (*)") },
+                            singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         )

@@ -1,0 +1,4 @@
+# Copia este archivo como application-local.properties o define las variables de entorno.
+# No subas una clave real al repositorio.
+INSFORGE_BASE_URL=https://tu-proyecto.us-east.insforge.app
+INSFORGE_API_KEY=anon_o_clave_de_servidor_de_InsForge

@@ -1,14 +1,22 @@
 package com.example.oftapp.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.oftapp.data.local.AppDatabase
+import com.example.oftapp.data.local.entity.AtencionEntity
+import com.example.oftapp.data.repository.AppRepository
 import androidx.lifecycle.ViewModel
 import com.example.oftapp.model.Atencion
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class FormAtencionState(
     val pacienteNombre: String = "",
+    val pacienteRut: String = "",
     val fecha: String = "",
     val sucursal: String = "Sucursal Providencia",
     val profesional: String = "",
@@ -16,58 +24,19 @@ data class FormAtencionState(
     val error: String? = null
 )
 
-class AtencionesViewModel : ViewModel() {
+class AtencionesViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _atenciones = MutableStateFlow(
-        listOf(
-            Atencion(
-                id = 1,
-                pacienteId = 1,
-                pacienteNombre = "Camila Rojas",
-                fecha = "15/10/2026",
-                sucursal = "Sucursal Providencia",
-                profesional = "Dr. Ricardo Sepúlveda",
-                motivo = "Control anual de agudeza visual",
-                estado = "Programada"
-            ),
-            Atencion(
-                id = 2,
-                pacienteId = 2,
-                pacienteNombre = "Jorge Valenzuela",
-                fecha = "02/09/2026",
-                sucursal = "Sucursal Central",
-                profesional = "TM. Andrea Morales",
-                motivo = "Evaluación de presión intraocular y tonometría",
-                estado = "Completada"
-            ),
-            Atencion(
-                id = 3,
-                pacienteId = 3,
-                pacienteNombre = "María Teresa Soto",
-                fecha = "20/10/2026",
-                sucursal = "Sucursal Las Condes",
-                profesional = "Dr. Ricardo Sepúlveda",
-                motivo = "Revisión de fondo de ojo por retinopatía",
-                estado = "Programada"
-            ),
-            Atencion(
-                id = 4,
-                pacienteId = 1,
-                pacienteNombre = "Camila Rojas",
-                fecha = "02/09/2026",
-                sucursal = "Sucursal Providencia",
-                profesional = "TM. Andrea Morales",
-                motivo = "Medición de vicio de refracción",
-                estado = "Completada"
-            )
-        )
-    )
+    private val db = AppDatabase.getDatabase(application)
+    private val repository = AppRepository(db.pacienteDao(), db.usuarioDao(), db.examenDao(), db.documentoDao(), db.atencionDao())
+
+    private val _atenciones = MutableStateFlow<List<Atencion>>(emptyList())
     val atenciones: StateFlow<List<Atencion>> = _atenciones.asStateFlow()
 
     private val _formState = MutableStateFlow(FormAtencionState())
     val formState: StateFlow<FormAtencionState> = _formState.asStateFlow()
 
     fun onPacienteNombreChange(valStr: String) = _formState.update { it.copy(pacienteNombre = valStr, error = null) }
+    fun onPacienteRutChange(valStr: String) = _formState.update { it.copy(pacienteRut = valStr, error = null) }
     fun onFechaChange(valStr: String) = _formState.update { it.copy(fecha = valStr, error = null) }
     fun onSucursalChange(valStr: String) = _formState.update { it.copy(sucursal = valStr, error = null) }
     fun onProfesionalChange(valStr: String) = _formState.update { it.copy(profesional = valStr, error = null) }
@@ -100,10 +69,14 @@ class AtencionesViewModel : ViewModel() {
             _formState.update { it.copy(error = "El motivo de la atención es obligatorio") }
             return false
         }
+        if (s.pacienteRut.isBlank()) {
+            _formState.update { it.copy(error = "El RUT del paciente es obligatorio") }
+            return false
+        }
 
         val nuevaAtencion = Atencion(
             id = (_atenciones.value.maxOfOrNull { it.id } ?: 0) + 1,
-            pacienteId = 1,
+            pacienteId = 4,
             pacienteNombre = s.pacienteNombre.trim(),
             fecha = s.fecha.trim(),
             sucursal = s.sucursal.trim(),
@@ -112,8 +85,33 @@ class AtencionesViewModel : ViewModel() {
             estado = "Programada"
         )
 
-        _atenciones.update { listOf(nuevaAtencion) + it }
-        resetForm()
+        viewModelScope.launch {
+            val paciente = repository.obtenerPacientePorRut(s.pacienteRut)
+            if (paciente == null) {
+                _formState.update { it.copy(error = "No existe un paciente registrado con ese RUT") }
+                return@launch
+            }
+
+            val creada = nuevaAtencion.copy(
+                pacienteId = paciente.id.toInt(),
+                pacienteNombre = "${paciente.nombre} ${paciente.apellidos}".trim()
+            )
+
+            repository.insertarAtencion(AtencionEntity(
+                id = creada.id.toLong(),
+                pacienteId = creada.pacienteId.toLong(),
+                pacienteNombre = creada.pacienteNombre,
+                medicoNombre = creada.profesional,
+                sucursal = creada.sucursal,
+                fecha = creada.fecha,
+                motivo = creada.motivo,
+                estado = creada.estado
+            ))
+
+            _atenciones.update { listOf(creada) + it }
+            resetForm()
+        }
+
         return true
     }
 }

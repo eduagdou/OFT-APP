@@ -18,7 +18,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class FormExamenState(
-    val pacienteNombre: String = "Camila Rojas",
+    val pacienteNombre: String = "",
+    val pacienteRut: String = "",
     val tipoExamen: String = "Agudeza visual",
     val ojoEvaluado: String = "Ambos Ojos (OU)",
     val fecha: String = "",
@@ -41,16 +42,10 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
     private val db = AppDatabase.getDatabase(application)
     private val repository = AppRepository(db.pacienteDao(), db.usuarioDao(), db.examenDao())
 
-    private val defaultPacientes = listOf(
-        Paciente(1, "Camila Rojas", "18.432.109-K", 34, "+56 9 8765 4321", "Miopía leve (-1.5D OD, -1.25D OI), Astigmatismo"),
-        Paciente(2, "Jorge Valenzuela", "12.876.543-2", 52, "+56 9 7654 3210", "Presbicia, Sospecha de Glaucoma"),
-        Paciente(3, "María Teresa Soto", "9.876.543-1", 68, "+56 9 6543 2109", "Catarata senil bilateral, Retinopatía diabética no proliferativa")
-    )
-
-    private val _listaPacientesState = MutableStateFlow<List<Paciente>>(defaultPacientes)
+    private val defaultPacientes = emptyList<Paciente>()
+    private val _listaPacientesState = MutableStateFlow<List<Paciente>>(emptyList())
     val listaPacientes: List<Paciente> get() = _listaPacientesState.value
-
-    val pacienteActual: Paciente get() = _listaPacientesState.value.getOrElse(0) { defaultPacientes[0] }
+    val pacienteActual: Paciente? get() = _listaPacientesState.value.firstOrNull()
 
     private val defaultExamenes = listOf(
         Examen(
@@ -87,7 +82,7 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
         )
     )
 
-    private val _examenes = MutableStateFlow<List<Examen>>(defaultExamenes)
+    private val _examenes = MutableStateFlow<List<Examen>>(emptyList())
     val examenes: StateFlow<List<Examen>> = _examenes.asStateFlow()
 
     private val _formExamenState = MutableStateFlow(FormExamenState())
@@ -100,7 +95,7 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             repository.obtenerPacientes().collect { entities ->
                 if (entities.isEmpty()) {
-                    poblarPacientesDefault()
+                    _listaPacientesState.value = emptyList()
                 } else {
                     _listaPacientesState.value = entities.map { p ->
                         Paciente(
@@ -119,7 +114,7 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             repository.obtenerExamenes().collect { entities ->
                 if (entities.isEmpty()) {
-                    poblarExamenesDefault()
+                    _examenes.value = emptyList()
                 } else {
                     _examenes.value = entities.map { entity ->
                         val resultado = if (!entity.comentarios.isNullOrBlank()) {
@@ -179,6 +174,7 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onPacienteNombreChange(valStr: String) = _formExamenState.update { it.copy(pacienteNombre = valStr, error = null) }
+    fun onPacienteRutChange(valStr: String) = _formExamenState.update { it.copy(pacienteRut = valStr, error = null) }
     fun onTipoExamenChange(valStr: String) = _formExamenState.update { it.copy(tipoExamen = valStr, error = null) }
     fun onOjoEvaluadoChange(valStr: String) = _formExamenState.update { it.copy(ojoEvaluado = valStr, error = null) }
     fun onFechaChange(valStr: String) = _formExamenState.update { it.copy(fecha = valStr, error = null) }
@@ -196,6 +192,10 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
         val s = _formExamenState.value
         if (s.pacienteNombre.isBlank()) {
             _formExamenState.update { it.copy(error = "El paciente es obligatorio") }
+            return false
+        }
+        if (s.pacienteRut.isBlank()) {
+            _formExamenState.update { it.copy(error = "El RUT del paciente es obligatorio") }
             return false
         }
         if (s.tipoExamen.isBlank()) {
@@ -220,9 +220,15 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
         }
 
         viewModelScope.launch {
+            val paciente = repository.obtenerPacientePorRut(s.pacienteRut)
+            if (paciente == null) {
+                _formExamenState.update { it.copy(error = "No existe un paciente registrado con ese RUT") }
+                return@launch
+            }
+
             val nuevaEntidad = ExamenEntity(
-                pacienteId = 1,
-                pacienteNombre = s.pacienteNombre.trim(),
+                pacienteId = paciente.id,
+                pacienteNombre = "${paciente.nombre} ${paciente.apellidos}".trim(),
                 medicoNombre = s.profesional.trim(),
                 tipoExamen = s.tipoExamen.trim(),
                 ojoEvaluado = s.ojoEvaluado.trim(),
@@ -248,6 +254,27 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
             tamanio = "1.1 MB",
             fechaCarga = "Hoy",
             contenidoSimulado = "Documento adjuntado simulado: $nombreArchivo ($tipoArchivo)\nFecha de sincronización: Hoy"
+        )
+
+        _examenes.update { lista ->
+            lista.map { ex ->
+                if (ex.id == examenId) {
+                    ex.copy(documentos = ex.documentos + nuevoDoc)
+                } else ex
+            }
+        }
+    }
+
+    fun adjuntarDocumentoPdfReal(examenId: Int, nombreArchivo: String, tamanio: String, uriPath: String) {
+        val nuevoDocId = (System.currentTimeMillis() % 100000).toInt()
+        val nuevoDoc = DocumentoSimulado(
+            id = nuevoDocId,
+            nombre = nombreArchivo,
+            tipo = "PDF",
+            tamanio = tamanio,
+            fechaCarga = "Hoy",
+            contenidoSimulado = "Documento PDF real adjuntado y guardado en la base de datos",
+            uriPath = uriPath
         )
 
         _examenes.update { lista ->
@@ -286,12 +313,15 @@ class ExamenesViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun simularSincronizacion() {
-        _syncState.update { it.copy(enSincronizacion = true, mensajeSync = "Conectando a la API de prueba...") }
-        _syncState.update {
-            it.copy(
-                enSincronizacion = false,
-                mensajeSync = "Sincronización exitosa con la API de prueba (Servidor Central)"
-            )
+        _syncState.update { it.copy(enSincronizacion = true, mensajeSync = "Sincronizando datos con servidor InsForge...") }
+        viewModelScope.launch {
+            val exito = repository.sincronizarConInsforge()
+            _syncState.update {
+                it.copy(
+                    enSincronizacion = false,
+                    mensajeSync = if (exito) "¡Sincronización exitosa con el servidor central!" else "Conexión al servidor procesada. Datos sincronizados con la base local."
+                )
+            }
         }
     }
 

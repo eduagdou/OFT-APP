@@ -10,6 +10,8 @@ class TextToSpeechHelper(context: Context) : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
     private var isInitialized = false
 
+    var ttsHabilitado: Boolean = true
+
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val result = tts?.setLanguage(Locale("es", "CL"))
@@ -22,8 +24,11 @@ class TextToSpeechHelper(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    fun hablar(texto: String) {
-        if (isInitialized && texto.isNotBlank()) {
+    /**
+     * Reproduce el dictado por voz SOLO si [activado] y [ttsHabilitado] son verdaderos.
+     */
+    fun hablar(texto: String, activado: Boolean = ttsHabilitado) {
+        if (activado && isInitialized && texto.isNotBlank()) {
             tts?.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "OFTAPP_TTS_ID")
         }
     }

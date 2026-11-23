@@ -146,6 +146,9 @@ fun PerfilScreen(
     val accessibilitySettings by accessibilityRepo.accessibilitySettingsFlow.collectAsState(initial = AccessibilitySettings())
 
     val ttsHelper = remember { TextToSpeechHelper(context) }
+    androidx.compose.runtime.LaunchedEffect(accessibilitySettings.lecturaVozAutomatica) {
+        ttsHelper.ttsHabilitado = accessibilitySettings.lecturaVozAutomatica
+    }
     DisposableEffect(Unit) {
         onDispose {
             ttsHelper.shutdown()
@@ -824,8 +827,8 @@ fun PerfilScreen(
                                         mensajeErrorClave = resError
                                         ttsHelper.hablar("Error: $resError")
                                     } else {
-                                        mensajeExitoClave = "¡Contraseña actualizada exitosamente! Usa tu nueva contraseña en el próximo inicio de sesión."
-                                        ttsHelper.hablar("Contraseña actualizada exitosamente")
+                                        mensajeExitoClave = "Solicitud enviada. Completa el restablecimiento oficial de InsForge para cambiar tu contraseña."
+                                        ttsHelper.hablar("Solicitud enviada. Completa el restablecimiento oficial de InsForge")
                                         claveActual = ""
                                         nuevaClave = ""
                                         confirmarClave = ""

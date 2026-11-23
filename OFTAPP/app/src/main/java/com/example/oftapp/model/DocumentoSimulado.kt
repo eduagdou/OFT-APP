@@ -6,5 +6,6 @@ data class DocumentoSimulado(
     val tipo: String, // "PDF", "Imagen", "Tabla"
     val tamanio: String, // ej. "1.2 MB"
     val fechaCarga: String,
-    val contenidoSimulado: String
+    val contenidoSimulado: String,
+    val uriPath: String? = null
 )

@@ -91,17 +91,21 @@ OFT-APP/
 ## 🚦 Instrucciones para Ejecutar el Proyecto
 
 ### 1. Ejecución de la Aplicación Android
-1. Abre la carpeta `OFTAPP/` en Android Studio (Ladybug / Koala o superior).
-2. Sincroniza Gradle (*Sync Project with Gradle Files*).
-3. Selecciona un emulador o dispositivo físico Android con API >= 24.
-4. Presiona **Run 'app'**.
+1. Instala Android Studio, Android SDK API 36 y JDK 17. El proyecto usa AGP 8.12, que requiere JDK 17.
+2. Configura el JDK 17 como **Gradle JDK** en Android Studio.
+3. Inicia el backend antes de abrir la aplicación.
+4. Para un teléfono físico, activa **Depuración USB**, conéctalo al PC, acepta la huella RSA y ejecuta `OFTAPP\connect-phone-backend.cmd`. El teléfono llegará al backend local mediante USB, sin depender del firewall ni de la IP Wi-Fi.
+5. Selecciona el teléfono en Android Studio y presiona **Run 'app'**.
+6. Para un servidor desplegado, compila indicando una URL HTTPS alcanzable: `./gradlew assembleDebug -PbackendUrl=https://api.tu-dominio.cl/`.
 
-### 2. Ejecución del Backend Spring Boot (Opcional para API Local)
+### 2. Ejecución del Backend Spring Boot
 ```bash
 cd backend
-mvnw spring-boot:run
+run-backend.cmd
 ```
-Accede a la documentación interactiva Swagger UI en: `http://localhost:8080/swagger-ui.html`.
+Antes de iniciarlo, define `INSFORGE_API_KEY` y, si corresponde, `INSFORGE_BASE_URL`. Consulta `backend/application-local.properties.example`; nunca subas una clave real al repositorio. Accede a Swagger UI en: `http://localhost:8080/swagger-ui.html`.
+
+La aplicación Android se comunica exclusivamente con este backend. El backend conserva la clave de InsForge y persiste su base H2 local en `backend/data/`.
 
 ### 3. Ejecución de Pruebas Unitarias e Instrumentadas
 ```bash
