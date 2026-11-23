@@ -43,18 +43,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
-import com.example.oftapp.ui.theme.AzulContenedor
-import com.example.oftapp.ui.theme.AzulPrincipal
-import com.example.oftapp.ui.theme.BordeSuave
-import com.example.oftapp.ui.theme.FondoApp
-import com.example.oftapp.ui.theme.TextoPrincipal
-import com.example.oftapp.ui.theme.TextoSecundario
-import com.example.oftapp.ui.theme.VerdeContenedor
 import com.example.oftapp.ui.theme.VerdeSecundario
 import com.example.oftapp.viewmodel.AtencionesViewModel
 import com.example.oftapp.viewmodel.ExamenesViewModel
@@ -75,8 +71,6 @@ fun HomeScreen(
 
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
 
-    // Restricción de Privacidad para Rol Paciente:
-    // Un paciente SOLO ve sus propias atenciones y sus propios exámenes.
     val atencionesVisibles = if (esPaciente) {
         todasAtenciones.filter { it.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true) }
     } else todasAtenciones
@@ -91,7 +85,7 @@ fun HomeScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = FondoApp
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
@@ -99,7 +93,7 @@ fun HomeScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Saludo e Identificación de Usuario y Rol (RF01)
+            // Saludo e Identificación de Usuario y Rol
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,14 +103,15 @@ fun HomeScreen(
                     Text(
                         text = "Hola, ${usuarioActual.nombre} 👋",
                         style = MaterialTheme.typography.displayMedium,
-                        color = TextoPrincipal,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                     Text(
                         text = if (esPaciente) "Tu Portal Personal de Seguimiento Vista" else "Panel General de Gestión Clínica",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextoSecundario
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -125,13 +120,13 @@ fun HomeScreen(
 
             // Badge de Rol Activo
             Surface(
-                color = AzulContenedor,
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, AzulPrincipal.copy(alpha = 0.3f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
             ) {
                 Text(
                     text = "Rol activo: ${usuarioActual.rol.titulo}",
-                    color = AzulPrincipal,
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -143,31 +138,33 @@ fun HomeScreen(
             // Tarjeta Hero: Próxima Atención Médica
             if (atencionProx != null) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Próxima atención médica: ${atencionProx.motivo} con fecha ${atencionProx.fecha}" },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, BordeSuave),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(AzulPrincipal)
+                                .background(MaterialTheme.colorScheme.primary)
                                 .padding(14.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarMonth,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(22.dp)
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     text = if (esPaciente) "Tu Próxima Atención Médica" else "Próxima Atención Registrada",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(Modifier.weight(1f))
@@ -190,14 +187,14 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Default.MedicalServices,
                                     contentDescription = null,
-                                    tint = AzulPrincipal,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     text = atencionProx.motivo,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = TextoPrincipal,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -207,14 +204,14 @@ fun HomeScreen(
                             Text(
                                 text = "Paciente: ${atencionProx.pacienteNombre} · Fecha: ${atencionProx.fecha}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = AzulPrincipal,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
 
                             Text(
                                 text = "Sucursal: ${atencionProx.sucursal} · Prof: ${atencionProx.profesional}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextoSecundario
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -230,32 +227,34 @@ fun HomeScreen(
             ) {
                 // Pendientes
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentDescription = "$pendientes exámenes pendientes" },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = AzulContenedor),
-                    border = BorderStroke(1.dp, AzulPrincipal.copy(alpha = 0.2f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 ) {
                     Column(Modifier.padding(14.dp)) {
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .background(AzulPrincipal, shape = CircleShape),
+                                .background(MaterialTheme.colorScheme.primary, shape = CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.PendingActions, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.PendingActions, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = "$pendientes",
                             style = MaterialTheme.typography.displayMedium,
-                            color = AzulPrincipal,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 28.sp
                         )
                         Text(
                             text = if (esPaciente) "Mis Pendientes" else "Exámenes Pendientes",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextoPrincipal,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -263,32 +262,34 @@ fun HomeScreen(
 
                 // Realizados
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentDescription = "$realizados exámenes realizados" },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = VerdeContenedor),
-                    border = BorderStroke(1.dp, VerdeSecundario.copy(alpha = 0.2f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
                 ) {
                     Column(Modifier.padding(14.dp)) {
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .background(VerdeSecundario, shape = CircleShape),
+                                .background(MaterialTheme.colorScheme.secondary, shape = CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = "$realizados",
                             style = MaterialTheme.typography.displayMedium,
-                            color = VerdeSecundario,
+                            color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 28.sp
                         )
                         Text(
                             text = if (esPaciente) "Mis Realizados" else "Exámenes Realizados",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextoPrincipal,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -302,7 +303,8 @@ fun HomeScreen(
                 text = "Módulos de Consulta y Gestión",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextoPrincipal
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() }
             )
 
             Spacer(Modifier.height(10.dp))
@@ -310,10 +312,11 @@ fun HomeScreen(
             Button(
                 onClick = onVerExamenes,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AzulPrincipal, contentColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
+                    .semantics { contentDescription = "Botón para ir a la gestión de exámenes clínicos" }
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -336,25 +339,26 @@ fun HomeScreen(
             OutlinedButton(
                 onClick = onVerAtenciones,
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.5.dp, AzulPrincipal),
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
+                    .semantics { contentDescription = "Botón para consultar y registrar atenciones médicas" }
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = AzulPrincipal, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = if (esPaciente) "Mis Atenciones Médicas" else "Consultar y Registrar Atenciones",
-                        color = AzulPrincipal,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
                     Spacer(Modifier.weight(1f))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = AzulPrincipal, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -363,25 +367,26 @@ fun HomeScreen(
             OutlinedButton(
                 onClick = onVerHistorial,
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.5.dp, AzulPrincipal),
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
+                    .semantics { contentDescription = "Botón para consultar el historial clínico del paciente" }
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.History, contentDescription = null, tint = AzulPrincipal, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = if (esPaciente) "Mi Historial Médico Personal" else "Historial por Paciente",
-                        color = AzulPrincipal,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
                     Spacer(Modifier.weight(1f))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = AzulPrincipal, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -391,8 +396,8 @@ fun HomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, BordeSuave)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Row(
@@ -404,13 +409,13 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.CloudSync, contentDescription = null, tint = AzulPrincipal)
+                            Icon(Icons.Default.CloudSync, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = "Sincronización con Servidor",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = TextoPrincipal,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp
                             )
                         }

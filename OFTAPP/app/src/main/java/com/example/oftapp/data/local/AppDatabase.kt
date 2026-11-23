@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [PacienteEntity::class, UsuarioEntity::class, ExamenEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "oftapp_database"
                 )
+                    .fallbackToDestructiveMigration()
                     .addCallback(AppDatabaseCallback(context.applicationContext))
                     .build()
                 INSTANCE = instance
@@ -51,17 +52,10 @@ abstract class AppDatabase : RoomDatabase() {
                 super.onCreate(db)
                 INSTANCE?.let { database ->
                     CoroutineScope(Dispatchers.IO).launch {
-                        poblarBaseDatos(database)
-                    }
-                }
-            }
-
-            override fun onOpen(db: SupportSQLiteDatabase) {
-                super.onOpen(db)
-                INSTANCE?.let { database ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        if (database.usuarioDao().obtenerPorId(1) == null) {
+                        try {
                             poblarBaseDatos(database)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
                     }
                 }

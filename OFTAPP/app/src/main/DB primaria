@@ -1,0 +1,144 @@
+-- 1. TABLA ROLES
+CREATE TABLE IF NOT EXISTS roles (
+    id SERIAL PRIMARY KEY,
+    codigo VARCHAR(50) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT
+);
+
+-- 2. TABLA SUCURSALES
+CREATE TABLE IF NOT EXISTS sucursales (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    direccion TEXT,
+    ciudad VARCHAR(50) DEFAULT 'Santiago'
+);
+
+-- 3. TABLA USUARIOS
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    rut VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    edad INT,
+    telefono VARCHAR(30),
+    correo VARCHAR(100) NOT NULL UNIQUE,
+    clave VARCHAR(100) NOT NULL,
+    rol_id INT NOT NULL REFERENCES roles(id),
+    sucursal_id INT REFERENCES sucursales(id),
+    foto_perfil_uri TEXT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. TABLA PACIENTES
+CREATE TABLE IF NOT EXISTS pacientes (
+    id SERIAL PRIMARY KEY,
+    rut VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    edad INT NOT NULL,
+    prevision VARCHAR(50) NOT NULL,
+    telefono VARCHAR(30),
+    correo VARCHAR(100) NOT NULL UNIQUE,
+    clave VARCHAR(100) NOT NULL,
+    antecedentes TEXT,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. TABLA ATENCIONES
+CREATE TABLE IF NOT EXISTS atenciones (
+    id SERIAL PRIMARY KEY,
+    paciente_id INT NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+    medico_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    sucursal_id INT REFERENCES sucursales(id) ON DELETE SET NULL,
+    fecha VARCHAR(50) NOT NULL,
+    motivo TEXT NOT NULL,
+    estado VARCHAR(50) NOT NULL DEFAULT 'Programada',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. TABLA EXAMENES
+CREATE TABLE IF NOT EXISTS examenes (
+    id SERIAL PRIMARY KEY,
+    paciente_id INT NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+    medico_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    atencion_id INT REFERENCES atenciones(id) ON DELETE SET NULL,
+    tipo_examen VARCHAR(100) NOT NULL,
+    ojo_evaluado VARCHAR(50) NOT NULL,
+    fecha_examen VARCHAR(50) NOT NULL,
+    fecha_resolucion VARCHAR(50),
+    estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
+    estado_entrega VARCHAR(50) DEFAULT 'Pendiente de firma',
+    descripcion TEXT NOT NULL,
+    sucursal VARCHAR(100) NOT NULL,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. TABLA RESULTADOS EXAMEN
+CREATE TABLE IF NOT EXISTS resultados_examen (
+    id SERIAL PRIMARY KEY,
+    examen_id INT NOT NULL UNIQUE REFERENCES examenes(id) ON DELETE CASCADE,
+    resumen TEXT NOT NULL,
+    observacion TEXT NOT NULL,
+    registrado_por VARCHAR(100) NOT NULL,
+    fecha_observacion VARCHAR(50) NOT NULL
+);
+
+-- 8. TABLA DOCUMENTOS EXAMEN
+CREATE TABLE IF NOT EXISTS documentos_examen (
+    id SERIAL PRIMARY KEY,
+    examen_id INT NOT NULL REFERENCES examenes(id) ON DELETE CASCADE,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    tipo_archivo VARCHAR(50) NOT NULL,
+    tamanio VARCHAR(30) NOT NULL,
+    fecha_carga VARCHAR(50) NOT NULL,
+    contenido_simulado TEXT
+);
+
+-- 9. TABLA CONTROL SINCRONIZACION
+CREATE TABLE IF NOT EXISTS sync_log (
+    id SERIAL PRIMARY KEY,
+    tabla_afectada VARCHAR(50) NOT NULL,
+    registro_id INT NOT NULL,
+    operacion VARCHAR(20) NOT NULL,
+    timestamp BIGINT NOT NULL,
+    sincronizado INT DEFAULT 0
+);
+
+
+####INSERTS
+
+INSERT INTO roles (id, codigo, nombre, descripcion) VALUES
+(1, 'PACIENTE', 'Paciente', 'Usuario paciente con acceso a su portal clínico'),
+(2, 'MEDICO_OFTALMOLOGO', 'Médico Oftalmólogo', 'Profesional facultado para diagnosticar y prescribir'),
+(3, 'TECNOLOGO_MEDICO', 'Tecnólogo Médico', 'Profesional encargado de realizar exámenes clínicos'),
+(4, 'PERSONAL_ADMINISTRATIVO', 'Personal Administrativo', 'Encargado de agendas, fichas y entregas'),
+(5, 'ADMINISTRADOR', 'Administrador Global', 'Acceso total y configuración del sistema')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO sucursales (id, nombre, direccion, ciudad) VALUES
+(1, 'Sucursal Providencia', 'Av. Providencia 1234', 'Santiago'),
+(2, 'Sucursal Central', 'Av. Libertador Bernardo O''Higgins 567', 'Santiago'),
+(3, 'Sucursal Las Condes', 'Av. Apoquindo 4321', 'Santiago')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO usuarios (id, rut, nombre, apellidos, edad, telefono, correo, clave, rol_id, sucursal_id) VALUES
+(1, '18.432.109-K', 'Camila', 'Rojas', 34, '+56 9 8765 4321', 'paciente001@pacientes.com', '1234', 1, 1),
+(2, '15.111.222-3', 'Dr. Ricardo', 'Sepúlveda', 45, '+56 9 1111 2222', 'medico001@empleados.com', '1234', 2, 2),
+(3, '16.333.444-5', 'TM. Andrea', 'Morales', 38, '+56 9 3333 4444', 'tecmed001@empleados.com', '1234', 3, 1),
+(4, '17.555.666-7', 'Carlos', 'Fuentes', 29, '+56 9 5555 6666', 'adminsec001@empleados.com', '1234', 4, 2),
+(5, '10.777.888-9', 'Prof. Manuel', 'Silva', 55, '+56 9 7777 8888', 'admin001@admin.com', '1234', 5, 2)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO pacientes (id, rut, nombre, apellidos, edad, prevision, telefono, correo, clave, antecedentes) VALUES
+(1, '18.432.109-K', 'Camila', 'Rojas', 34, 'Fonasa', '+56 9 8765 4321', 'paciente001@pacientes.com', '1234', 'Miopía leve (-1.5D OD, -1.25D OI), Astigmatismo'),
+(2, '12.876.543-2', 'Jorge', 'Valenzuela', 52, 'Isapre', '+56 9 7654 3210', 'jorge.valenzuela@pacientes.com', '1234', 'Presbicia, Sospecha de Glaucoma'),
+(3, '9.876.543-1', 'María Teresa', 'Soto', 68, 'Fonasa', '+56 9 6543 2109', 'mteresa.soto@pacientes.com', '1234', 'Catarata senil bilateral')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO examenes (id, paciente_id, medico_id, tipo_examen, ojo_evaluado, fecha_examen, fecha_resolucion, estado, estado_entrega, descripcion, sucursal) VALUES
+(1, 1, 3, 'Agudeza visual', 'Ambos Ojos (OU)', '02/09/2026', '02/09/2026', 'Realizado', 'Disponible en portal', 'Mide la nitidez de la visión con cartilla Snellen.', 'Sucursal Providencia'),
+(2, 1, 3, 'Presión intraocular', 'Ambos Ojos (OU)', '02/09/2026', '02/09/2026', 'Realizado', 'Entregado en sucursal', 'Tonometría de aplanación.', 'Sucursal Providencia'),
+(3, 1, 2, 'Fondo de ojo', 'Ambos Ojos (OU)', '20/10/2026', NULL, 'Pendiente', 'Pendiente de firma', 'Evaluación de retina bajo dilatación pupilar.', 'Sucursal Providencia'),
+(4, 2, 3, 'Campo visual', 'Ojo Izquierdo (OI)', '05/11/2026', NULL, 'Pendiente', 'Pendiente de firma', 'Campimetría computarizada.', 'Sucursal Central')
+ON CONFLICT (id) DO NOTHING;

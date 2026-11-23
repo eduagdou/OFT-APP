@@ -40,19 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.oftapp.model.Paciente
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
-import com.example.oftapp.ui.theme.AzulContenedor
-import com.example.oftapp.ui.theme.AzulPrincipal
-import com.example.oftapp.ui.theme.BordeSuave
-import com.example.oftapp.ui.theme.FondoApp
-import com.example.oftapp.ui.theme.TextoPrincipal
-import com.example.oftapp.ui.theme.TextoSecundario
-import com.example.oftapp.ui.theme.VerdeContenedor
 import com.example.oftapp.ui.theme.VerdeSecundario
 import com.example.oftapp.viewmodel.ExamenesViewModel
 
@@ -65,7 +60,6 @@ fun HistorialPacienteScreen(
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
     val todosPacientes = viewModel.listaPacientes
 
-    // Si es PACIENTE, filtrar la lista para que SOLO pueda ver su propio perfil
     val pacientesDisponibles = if (esPaciente) {
         todosPacientes.filter { it.nombre.equals(usuarioActual.nombre, ignoreCase = true) }
     } else {
@@ -80,7 +74,7 @@ fun HistorialPacienteScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = FondoApp
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
@@ -92,10 +86,10 @@ fun HistorialPacienteScreen(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(AzulContenedor, shape = CircleShape),
+                        .background(MaterialTheme.colorScheme.primaryContainer, shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.History, contentDescription = null, tint = AzulPrincipal)
+                    Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -103,19 +97,20 @@ fun HistorialPacienteScreen(
                         text = if (esPaciente) "Mi Historial Médico Personal" else "Historial por Paciente",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = TextoPrincipal
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.semantics { heading() }
                     )
                     Text(
                         text = if (esPaciente) "Revisa el registro histórico de tus exámenes oftalmológicos." else "Seleccione un paciente para revisar su historial clínico completo.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextoSecundario
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Selector de Pacientes (Solo si NO es rol Paciente)
+            // Selector de Pacientes
             if (!esPaciente && pacientesDisponibles.size > 1) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -136,10 +131,10 @@ fun HistorialPacienteScreen(
                                 Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
                             },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AzulPrincipal,
-                                selectedLabelColor = Color.White,
-                                containerColor = Color.White,
-                                labelColor = TextoPrincipal
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                labelColor = MaterialTheme.colorScheme.onSurface
                             )
                         )
                     }
@@ -150,10 +145,12 @@ fun HistorialPacienteScreen(
 
             // Tarjeta de Antecedentes del Paciente Seleccionado
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Ficha clínica del paciente ${pacienteSeleccionado.nombre}, RUT ${pacienteSeleccionado.rutFicticio}" },
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, BordeSuave)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Row(
@@ -165,15 +162,16 @@ fun HistorialPacienteScreen(
                             text = pacienteSeleccionado.nombre,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = TextoPrincipal
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.semantics { heading() }
                         )
                         Surface(
-                            color = AzulContenedor,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
                                 text = "RUT: ${pacienteSeleccionado.rutFicticio}",
-                                color = AzulPrincipal,
+                                color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -186,20 +184,20 @@ fun HistorialPacienteScreen(
                     Text(
                         text = "Edad: ${pacienteSeleccionado.edad} años · Tel: ${pacienteSeleccionado.telefonoFicticio}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextoSecundario
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(Modifier.height(8.dp))
 
                     Surface(
-                        color = VerdeContenedor,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = "Antecedentes Diagnosticados: ${pacienteSeleccionado.antecedentes}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = VerdeSecundario,
+                            color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(10.dp)
                         )
@@ -213,7 +211,8 @@ fun HistorialPacienteScreen(
                 text = if (esPaciente) "Mis Exámenes Previos (${historialExamenes.size})" else "Exámenes Registrados del Paciente (${historialExamenes.size})",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextoPrincipal
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() }
             )
 
             Spacer(Modifier.height(10.dp))
@@ -228,7 +227,7 @@ fun HistorialPacienteScreen(
                     Text(
                         text = "No hay registros de exámenes previos disponibles.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = TextoSecundario
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -239,16 +238,17 @@ fun HistorialPacienteScreen(
                 ) {
                     items(historialExamenes, key = { it.id }) { examen ->
                         val esRealizado = examen.estado == "Realizado"
-                        val colorEstado = if (esRealizado) VerdeSecundario else AzulPrincipal
-                        val fondoEstado = if (esRealizado) VerdeContenedor else AzulContenedor
+                        val colorEstado = if (esRealizado) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                        val fondoEstado = if (esRealizado) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer
 
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onExamenClick(examen.id) },
+                                .clickable { onExamenClick(examen.id) }
+                                .semantics { contentDescription = "Registro histórico del examen ${examen.tipoExamen} con fecha ${examen.fecha}" },
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = BorderStroke(1.dp, BordeSuave),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
                             Row(
@@ -283,7 +283,7 @@ fun HistorialPacienteScreen(
                                             text = examen.tipoExamen,
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = TextoPrincipal
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Surface(
                                             color = fondoEstado,
@@ -304,7 +304,7 @@ fun HistorialPacienteScreen(
                                     Text(
                                         text = "Ojo: ${examen.ojoEvaluado} · Fecha: ${examen.fecha}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextoSecundario
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
 
                                     if (examen.resultado != null) {
@@ -312,7 +312,7 @@ fun HistorialPacienteScreen(
                                         Text(
                                             text = "Resultado: ${examen.resultado.resumen}",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = AzulPrincipal,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
@@ -323,7 +323,7 @@ fun HistorialPacienteScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
-                                    tint = AzulPrincipal,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }

@@ -55,19 +55,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.oftapp.model.Rol
 import com.example.oftapp.model.Usuario
-import com.example.oftapp.ui.theme.AzulContenedor
-import com.example.oftapp.ui.theme.AzulPrincipal
-import com.example.oftapp.ui.theme.BordeSuave
-import com.example.oftapp.ui.theme.FondoApp
-import com.example.oftapp.ui.theme.TextoPrincipal
-import com.example.oftapp.ui.theme.TextoSecundario
-import com.example.oftapp.ui.theme.VerdeContenedor
 import com.example.oftapp.ui.theme.VerdeSecundario
 import com.example.oftapp.viewmodel.ExamenesViewModel
 
@@ -87,8 +83,6 @@ fun ExamenesScreen(
     val esPaciente = usuarioActual.rol == Rol.PACIENTE
     val puedeCrearExamen = usuarioActual.rol.puedeCrearExamen()
 
-    // Privacidad estricta para el Rol Paciente:
-    // Si es PACIENTE, ver únicamente los exámenes correspondientes a su propio nombre.
     val examenesBase = if (esPaciente) {
         examenes.filter { it.pacienteNombre.equals(usuarioActual.nombre, ignoreCase = true) }
     } else {
@@ -112,7 +106,7 @@ fun ExamenesScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = FondoApp
+        color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -124,27 +118,29 @@ fun ExamenesScreen(
                 OutlinedTextField(
                     value = textoBusqueda,
                     onValueChange = { textoBusqueda = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Campo de búsqueda para filtrar la lista de exámenes clínicos" },
                     placeholder = {
                         Text(if (esPaciente) "Buscar en mis exámenes..." else "Buscar examen por tipo, paciente, fecha, sucursal...")
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = AzulPrincipal)
+                        Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     },
                     trailingIcon = {
                         if (textoBusqueda.isNotEmpty()) {
                             IconButton(onClick = { textoBusqueda = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar texto de búsqueda")
                             }
                         }
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AzulPrincipal,
-                        unfocusedBorderColor = BordeSuave,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
                     )
                 )
 
@@ -160,7 +156,7 @@ fun ExamenesScreen(
                         Icon(
                             imageVector = Icons.Default.FilterList,
                             contentDescription = "Filtros",
-                            tint = TextoSecundario,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .size(20.dp)
                                 .padding(end = 4.dp)
@@ -180,15 +176,15 @@ fun ExamenesScreen(
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = if (opcion == "Realizados") VerdeSecundario else AzulPrincipal,
-                                selectedLabelColor = Color.White,
-                                containerColor = Color.White,
-                                labelColor = TextoPrincipal
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                labelColor = MaterialTheme.colorScheme.onSurface
                             ),
                             border = FilterChipDefaults.filterChipBorder(
                                 enabled = true,
                                 selected = seleccionado,
-                                borderColor = BordeSuave,
+                                borderColor = MaterialTheme.colorScheme.outline,
                                 selectedBorderColor = Color.Transparent
                             )
                         )
@@ -208,7 +204,7 @@ fun ExamenesScreen(
                         Text(
                             text = if (esPaciente) "No tienes exámenes registrados asociados a tu cuenta." else "No se encontraron exámenes con los criterios ingresados.",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = TextoSecundario
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {
@@ -219,16 +215,17 @@ fun ExamenesScreen(
                     ) {
                         items(examenesFiltrados, key = { it.id }) { examen ->
                             val esRealizado = examen.estado == "Realizado"
-                            val colorEstado = if (esRealizado) VerdeSecundario else AzulPrincipal
-                            val fondoEstado = if (esRealizado) VerdeContenedor else AzulContenedor
+                            val colorEstado = if (esRealizado) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                            val fondoEstado = if (esRealizado) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer
 
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onExamenClick(examen.id) },
+                                    .clickable { onExamenClick(examen.id) }
+                                    .semantics { contentDescription = "Examen ${examen.tipoExamen} del paciente ${examen.pacienteNombre}. Estado ${examen.estado}" },
                                 shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                border = BorderStroke(1.dp, BordeSuave),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
                                 Row(
@@ -264,9 +261,11 @@ fun ExamenesScreen(
                                             Text(
                                                 text = examen.tipoExamen,
                                                 style = MaterialTheme.typography.titleMedium,
-                                                color = TextoPrincipal,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.weight(1f)
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .semantics { heading() }
                                             )
 
                                             Surface(
@@ -288,7 +287,7 @@ fun ExamenesScreen(
                                         Text(
                                             text = "Paciente: ${examen.pacienteNombre}",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = AzulPrincipal,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.SemiBold
                                         )
 
@@ -298,28 +297,28 @@ fun ExamenesScreen(
                                             Text(
                                                 text = "Ojo: ${examen.ojoEvaluado}",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextoPrincipal,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 fontWeight = FontWeight.Medium
                                             )
                                             Spacer(Modifier.width(12.dp))
-                                            Icon(Icons.Default.CalendarToday, contentDescription = null, tint = TextoSecundario, modifier = Modifier.size(12.dp))
+                                            Icon(Icons.Default.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(12.dp))
                                             Spacer(Modifier.width(4.dp))
                                             Text(
                                                 text = examen.fecha,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextoSecundario
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
 
                                         Spacer(Modifier.height(2.dp))
 
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = TextoSecundario, modifier = Modifier.size(12.dp))
+                                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(12.dp))
                                             Spacer(Modifier.width(4.dp))
                                             Text(
                                                 text = examen.sucursal,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextoSecundario
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
@@ -329,7 +328,7 @@ fun ExamenesScreen(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                         contentDescription = "Ver Detalle",
-                                        tint = AzulPrincipal,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -339,22 +338,23 @@ fun ExamenesScreen(
                 }
             }
 
-            // Botón flotante para crear examen (Solo roles clínicos/administrativos autorizados)
+            // Botón flotante para crear examen
             if (puedeCrearExamen) {
                 FloatingActionButton(
                     onClick = { mostrarDialogoCrear = true },
-                    containerColor = AzulPrincipal,
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(20.dp)
+                        .semantics { contentDescription = "Botón para crear un nuevo examen clínico" }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Nuevo Examen", modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Nuevo Examen", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
@@ -371,7 +371,7 @@ fun ExamenesScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier
@@ -382,12 +382,12 @@ fun ExamenesScreen(
                             text = "Registrar Nuevo Examen",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = TextoPrincipal
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Ingrese los datos del examen y valide campos obligatorios.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextoSecundario
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(Modifier.height(14.dp))
@@ -519,7 +519,7 @@ fun ExamenesScreen(
                                     }
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AzulPrincipal),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp)

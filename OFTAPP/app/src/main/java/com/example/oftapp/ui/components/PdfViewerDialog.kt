@@ -16,9 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -104,7 +102,7 @@ fun PdfViewerDialog(
                 .fillMaxWidth()
                 .height(520.dp),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
@@ -115,12 +113,13 @@ fun PdfViewerDialog(
                 Text(
                     text = "Visor PDF (PdfRenderer Nativo)",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = tituloDocumento,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -129,7 +128,7 @@ fun PdfViewerDialog(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .background(Color(0xFFF0F2F5), shape = RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     bitmapPage?.let { bmt ->
@@ -138,7 +137,7 @@ fun PdfViewerDialog(
                             contentDescription = "Página del PDF $tituloDocumento",
                             modifier = Modifier.fillMaxSize()
                         )
-                    } ?: Text("Cargando vista previa de PDF...")
+                    } ?: Text("Cargando vista previa de PDF...", color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -150,7 +149,8 @@ fun PdfViewerDialog(
                 ) {
                     Text(
                         text = "Página ${currentPageIndex + 1} de $totalPages",
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     OutlinedButton(onClick = onDismiss) {
